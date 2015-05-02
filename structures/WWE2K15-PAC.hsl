@@ -18,55 +18,63 @@
 
 #pragma hide()
 
-struct EPAC_FileList
+
+struct EPAC_HierarchyB
 {
-	char  id[4] ;
-	DWORD unknown ;
-	DWORD unknown ;
+	char	id[4] ;
+	__int32	unknown ;
+	__int32	unknown ;
 	
-} EPAC_FileList ;
+} EPAC_HierarchyB ;
 
-
-struct EPK8_ListTest
+struct EPK8_HierarchyB
 {
-	char unknown[4] ; //Why is this number plaintext??
-	char  id[4] ;
-	DWORD unknown ;
-	DWORD unknown ;
+	char	unknown[4] ; //Why is this number plaintext??
+	char	id[4] ;
+	__int32 unknown ;
+	__int32 unknown ;
 
-} EPK8_ListTest ;
+} EPK8_HierarchyB ;
 
 #pragma show()
 
-struct EPK8_FileList
+struct EPAC_HierarchyA
 {
-	char	id[4] ; //Some type of tag
-	WORD	listCount ;
-	WORD	unknown ;
-	DWORD	unknown ;
+	char				id[4] ; //Some type of tag
+	__int16				listCount ;
+	__int16				unknown ;
+	__int32				unknown ;
+	EPAC_HierarchyB		List[listCount/4];
 	
-	EPK8_ListTest	List[listCount/4];
+} EPAC_HierarchyA ;
+
+struct EPK8_HierarchyA
+{
+	char				id[4] ; //Some type of tag
+	WORD				listCount ;
+	WORD				unknown ;
+	DWORD				unknown ;
 	
-} EPK8_FileList ;
-
-
+	EPK8_HierarchyB		List[listCount/4];
+	
+} EPK8_HierarchyA ;
 
 struct EPAC 
 {
 	//2048 byte header
-	char id[4] ;
+	char			id[4] ;
 	DWORD			FileListSize ;	//Size of file list
 	DWORD			FileDataSize ;	//Size of data
 	DWORD			unknown ;		//Version?
 	blob			padding[2032] ;
 	
-	//14336 byte padded chunk
-	EPAC_FileList	list[(FileListSize/12)] ;		//This may be hierarchy based like the EPK8 format, but I'm not sure.
+	//14336 byte padded chunk (2048*7)
+	EPAC_HierarchyA	list ; //This may be hierarchy based like the EPK8 format, but I'm not sure.
 	blob			padding[14336-FileListSize] ;	//Weird...
 	
-	//This may be padded too??
+	//This may be padded too?? (each pach IS padded to 2048 chunks)
 	blob			data[FileDataSize] ;
-	char			unknown[100] ;					// EOP5/plugin version 1.26........KFM3:2/986......................10.10.102.32....................0.6U
+	char			unknown[100] ;	// EOP5/plugin version 1.26
 
 	//There is something else going on after this point but it's all mostly null.
 } ;
@@ -74,19 +82,57 @@ struct EPAC
 struct EPK8 
 {
 	//2048 byte header
-	char id[4] ;
+	char		id[4] ;
 	DWORD		FileListSize ;	//Size of file list
 	DWORD		FileDataSize ;	//Size of data
 	DWORD		unknown ;		//Version?
 	blob		padding[2032] ;
 	
 	//14336 byte padded chunk
-	EPK8_FileList	list;							//This is hierarchy based it would appear. Not sure where the number of these come from.
-	//blob			padding[14336-FileListSize] ;	//Weird...
+	EPK8_HierarchyA	list;	//This is hierarchy based it would appear. Not sure where the number of these come from.
+	blob			padding[14336-FileListSize] ;	//Weird...
 	
-	//This may be padded too??
-	//blob		data[FileDataSize] ;
-	//char		unknown[100] ;	// EOP5/plugin version 1.26........KFM3:2/986......................10.10.102.32....................0.6U
+	//This may be padded too?? (each pach IS padded to 2048 chunks)
+	blob		data[FileDataSize] ;
+	char		unknown[100] ;	// EOP5/plugin version 1.26
 
 	//There is something else going on after this point but it's all mostly null.
 } ;
+
+
+/* this is hex worskshop specific but not too hard to convert to c|c++|c# and such */
+function AutoParse
+{
+    __int32 pos = 0 ; //current position in the file.
+    __int32 end = __getDocSize() ;
+	
+	//Let's go through this byte by byte
+    while (pos < end)
+    {
+		//header
+		__int32 type = __getUDWordAt(pos);
+		__int32 listSize = __getUDWordAt(pos+4);
+		__int32 dataSize = __getUDWordAt(pos+8);
+		__int32 version = __getUDWordAt(pos+16);
+		pos=0x0800; //header is 2048 byte padded chunk
+		
+		//file hierarchy
+		while (pos < 0x0800+listSize)
+		{
+			if (type == 944459845) //EPK8
+			{
+				pos += __addStructureAt(pos, "EPK8_HierarchyA", "") ;
+			};
+			if (type == 1128353861) //EPAC
+			{
+				pos += __addStructureAt(pos, "EPAC_HierarchyB", "") ; //I'm still not sure about this...
+			};
+		};
+		pos=0x4000; //file hierarchy is 14336 byte padded chunk
+		
+		pos+=dataSize;
+		
+		//Just end it for now
+		pos=end;
+    } ;
+} 
