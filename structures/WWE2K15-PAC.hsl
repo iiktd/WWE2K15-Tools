@@ -1,0 +1,41 @@
+/*****************************************************************************
+ * WWE2K15-PAC.hsl - Structure definitions for the WWE2K15 .pac formats
+ *
+ *****************************************************************************
+ * Revision History:
+ *  2015-05-01 - Keshire - original
+ */
+
+#include "standard-types.hsl"
+
+#pragma displayname("pac structures")
+#pragma fileextensions(".pac")
+
+#pragma byteorder(little_endian)
+
+#pragma maxarray(16384)
+#pragma enumsize(4)
+
+struct FileList
+{
+	char  id[4] ;
+	DWORD unknown ;
+	DWORD unknown ;
+} FileList ;
+
+struct EPAC 
+{
+	//2048 byte header
+	char id[4] ;
+    DWORD		unknown ;
+	DWORD		FullDataSize ; //Actual data size
+	DWORD		unknown ; // Version?
+	blob		padding[2032] ;
+	
+	FileList	list[1194] ; //What is this? A file list with a predefined size?? I don't see anything to show number of files.
+	blob		padding[8] ;
+	
+	blob		data[FullDataSize] ;
+	
+	char		unknown[100] ; // EOP5/plugin version 1.26........KFM3:2/986......................10.10.102.32....................0.6U
+} ;
