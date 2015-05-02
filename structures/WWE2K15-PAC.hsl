@@ -1,6 +1,6 @@
 /*****************************************************************************
  * WWE2K15-PAC.hsl - Structure definitions for the WWE2K15 .pac formats
- *
+ * 2048 byte aligned = (datasize)+((2048 - (datasize % 2048)) % 2048)
  *****************************************************************************
  * Revision History:
  *  2015-05-01 - Keshire - original
@@ -18,21 +18,14 @@
 
 #pragma hide()
 
-
-struct EPAC_HierarchyB
-{
-	char	id[4] ;
-	__int32	unknown ;
-	__int32	unknown ;
-	
-} EPAC_HierarchyB ;
-
 struct EPK8_HierarchyB
 {
 	char	unknown[4] ; //Why is this number plaintext??
 	char	id[4] ;
-	__int32 unknown ;
-	__int32 unknown ;
+	unsigned __int16			unknown ;
+	unsigned __int8				unknown ;
+	unsigned __int32			datasize ; 
+	unsigned __int8				unknown ;
 
 } EPK8_HierarchyB ;
 
@@ -42,9 +35,9 @@ struct EPAC_HierarchyA
 {
 	char				id[4] ; //Some type of tag
 	__int16				listCount ;
-	__int16				unknown ;
-	__int32				unknown ;
-	EPAC_HierarchyB		List[listCount/4];
+	__int8				unknown ;
+	__int32				datasize ; 
+	__int8				unknown ;
 	
 } EPAC_HierarchyA ;
 
@@ -69,7 +62,7 @@ struct EPAC
 	blob			padding[2032] ;
 	
 	//14336 byte padded chunk (2048*7)
-	EPAC_HierarchyA	list ; //This may be hierarchy based like the EPK8 format, but I'm not sure.
+	EPAC_HierarchyA	list[FileListSize/12] ; //This may be hierarchy based like the EPK8 format, but I'm not sure.
 	blob			padding[14336-FileListSize] ;	//Weird...
 	
 	//This may be padded too?? (each pach IS padded to 2048 chunks)
@@ -125,8 +118,9 @@ function AutoParse
 			};
 			if (type == 1128353861) //EPAC
 			{
-				pos += __addStructureAt(pos, "EPAC_HierarchyB", "") ; //I'm still not sure about this...
+				pos += __addStructureAt(pos, "EPAC_HierarchyA", "") ; //I'm still not sure about this...
 			};
+
 		};
 		pos=0x4000; //file hierarchy is 14336 byte padded chunk
 		
