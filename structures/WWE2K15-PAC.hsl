@@ -16,27 +16,77 @@
 #pragma maxarray(16384)
 #pragma enumsize(4)
 
-struct FileList
+#pragma hide()
+
+struct EPAC_FileList
 {
 	char  id[4] ;
 	DWORD unknown ;
 	DWORD unknown ;
-} FileList ;
+	
+} EPAC_FileList ;
+
+
+struct EPK8_ListTest
+{
+	char unknown[4] ; //Why is this number plaintext??
+	char  id[4] ;
+	DWORD unknown ;
+	DWORD unknown ;
+
+} EPK8_ListTest ;
+
+#pragma show()
+
+struct EPK8_FileList
+{
+	char	id[4] ; //Some type of tag
+	WORD	listCount ;
+	WORD	unknown ;
+	DWORD	unknown ;
+	
+	EPK8_ListTest	List[listCount/4];
+	
+} EPK8_FileList ;
+
+
 
 struct EPAC 
 {
 	//2048 byte header
 	char id[4] ;
-	DWORD		FileListSize ; //Size of file list
-	DWORD		FileDataSize ; //Size of data
-	DWORD		unknown ; // Version?
+	DWORD			FileListSize ;	//Size of file list
+	DWORD			FileDataSize ;	//Size of data
+	DWORD			unknown ;		//Version?
+	blob			padding[2032] ;
+	
+	//14336 byte padded chunk
+	EPAC_FileList	list[(FileListSize/12)] ;		//This may be hierarchy based like the EPK8 format, but I'm not sure.
+	blob			padding[14336-FileListSize] ;	//Weird...
+	
+	//This may be padded too??
+	blob			data[FileDataSize] ;
+	char			unknown[100] ;					// EOP5/plugin version 1.26........KFM3:2/986......................10.10.102.32....................0.6U
+
+	//There is something else going on after this point but it's all mostly null.
+} ;
+
+struct EPK8 
+{
+	//2048 byte header
+	char id[4] ;
+	DWORD		FileListSize ;	//Size of file list
+	DWORD		FileDataSize ;	//Size of data
+	DWORD		unknown ;		//Version?
 	blob		padding[2032] ;
 	
 	//14336 byte padded chunk
-	FileList	list[(FileListSize/12)] ; //What is this? A file list with a predefined size?? I don't see anything to show number of files.
-	blob		padding[14336-FileListSize] ; //Weird...
+	EPK8_FileList	list;							//This is hierarchy based it would appear. Not sure where the number of these come from.
+	//blob			padding[14336-FileListSize] ;	//Weird...
 	
-	blob		data[FileDataSize] ;
-	
-	char		unknown[100] ; // EOP5/plugin version 1.26........KFM3:2/986......................10.10.102.32....................0.6U
+	//This may be padded too??
+	//blob		data[FileDataSize] ;
+	//char		unknown[100] ;	// EOP5/plugin version 1.26........KFM3:2/986......................10.10.102.32....................0.6U
+
+	//There is something else going on after this point but it's all mostly null.
 } ;
