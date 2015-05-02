@@ -27,15 +27,16 @@ struct EPAC
 {
 	//2048 byte header
 	char id[4] ;
-    DWORD		unknown ;
-	DWORD		FullDataSize ; //Actual data size
+	DWORD		FileListSize ; //Size of file list
+	DWORD		FileDataSize ; //Size of data
 	DWORD		unknown ; // Version?
 	blob		padding[2032] ;
 	
-	FileList	list[1194] ; //What is this? A file list with a predefined size?? I don't see anything to show number of files.
-	blob		padding[8] ;
+	//14336 byte padded chunk
+	FileList	list[(FileListSize/12)] ; //What is this? A file list with a predefined size?? I don't see anything to show number of files.
+	blob		padding[14336-FileListSize] ; //Weird...
 	
-	blob		data[FullDataSize] ;
+	blob		data[FileDataSize] ;
 	
 	char		unknown[100] ; // EOP5/plugin version 1.26........KFM3:2/986......................10.10.102.32....................0.6U
 } ;
