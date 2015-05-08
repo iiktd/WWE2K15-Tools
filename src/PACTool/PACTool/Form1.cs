@@ -14,10 +14,14 @@ namespace PACTool
 {
     public partial class Form1 : Form
     {
+
+        public string[] args = Environment.GetCommandLineArgs();
+
         public Form1()
         {
             InitializeComponent();
             PopulateTreeView();
+            this.Text = Path.GetFileName(args[1]);
             this.treeView1.NodeMouseClick += new TreeNodeMouseClickEventHandler(this.treeView1_NodeMouseClick);
         }
 
@@ -27,34 +31,50 @@ namespace PACTool
         //TreeView stuff
         private void PopulateTreeView()
         {
-            TreeNode rootNode;
 
-            DirectoryInfo info = new DirectoryInfo(@"../..");
-            if (info.Exists)
+            //args = new[] { "ch100.pac" }; //temporary
+            //Let's get tree info
+            using (BinaryReader b = new BinaryReader(File.Open(args[1], FileMode.Open)))
             {
-                rootNode = new TreeNode(info.Name);
-                rootNode.Tag = info;
-                GetDirectories(info.GetDirectories(), rootNode);
+                //read the file
+                var openPacFile = new PacFileHandling(b);
+
+                //TreeNode rootNode;
+                var rootNode = new TreeNode(openPacFile.pacFile.header.id.ToString());
+                rootNode.Tag = null;
+
+                //This needs to be fixed for pacs with multiple dirs
+                //GetDirectories(openPacFile.pacFile, rootNode);
+                var aNode = new TreeNode(openPacFile.pacFile.dir[0].id, 0, 0);
+                aNode.Tag = openPacFile.pacFile.dir[0];
+                aNode.ImageKey = "folder";
+                rootNode.Nodes.Add(aNode);
+
+                
                 treeView1.Nodes.Add(rootNode);
             }
         }
 
-        private void GetDirectories(DirectoryInfo[] subDirs, TreeNode nodeToAddTo)
+        private void GetDirectories(Pac subDir, TreeNode nodeToAddTo)
         {
             TreeNode aNode;
-            DirectoryInfo[] subSubDirs;
-            foreach (DirectoryInfo subDir in subDirs)
+            //PacDir[] subSubDirs;
+            /*
+            foreach (PacDir subDir in subDirs)
             {
-                aNode = new TreeNode(subDir.Name, 0, 0);
+                aNode = new TreeNode(subDir.id, 0, 0);
                 aNode.Tag = subDir;
                 aNode.ImageKey = "folder";
-                subSubDirs = subDir.GetDirectories();
-                if (subSubDirs.Length != 0)
-                {
-                    GetDirectories(subSubDirs, aNode);
-                }
+
                 nodeToAddTo.Nodes.Add(aNode);
             }
+            */
+
+            aNode = new TreeNode(subDir.dir[0].id, 0, 0);
+            aNode.Tag = subDir;
+            aNode.ImageKey = "folder";
+
+            nodeToAddTo.Nodes.Add(aNode);
         }
 
         //Mouse click stuff
@@ -62,34 +82,27 @@ namespace PACTool
         {
             TreeNode newSelected = e.Node;
             listView1.Items.Clear();
-            DirectoryInfo nodeDirInfo = (DirectoryInfo)newSelected.Tag;
+            PacDir nodeDirInfo = (PacDir)newSelected.Tag;
             ListViewItem.ListViewSubItem[] subItems;
             ListViewItem item = null;
 
-            foreach (DirectoryInfo dir in nodeDirInfo.GetDirectories())
+            if (e.Node.Tag != null)
             {
-                item = new ListViewItem(dir.Name, 0);
-                subItems = new ListViewItem.ListViewSubItem[] {
-                    new ListViewItem.ListViewSubItem(item, "Directory"),
-                    new ListViewItem.ListViewSubItem(item, dir.LastAccessTime.ToShortDateString())
-                };
 
-                item.SubItems.AddRange(subItems);
-                listView1.Items.Add(item);
+                //Fudge the dir array for testing
+                foreach (PacFile file in nodeDirInfo.file)
+                {
+                    item = new ListViewItem(file.id, 1);
+                    subItems = new ListViewItem.ListViewSubItem[]
+                    {
+                        new ListViewItem.ListViewSubItem(item, "File")
+                        ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
+                    };
+                    item.SubItems.AddRange(subItems);
+                    listView1.Items.Add(item);
+                }
+
             }
-            foreach (FileInfo file in nodeDirInfo.GetFiles())
-            {
-                item = new ListViewItem(file.Name, 1);
-                subItems = new ListViewItem.ListViewSubItem[]
-                { 
-                    new ListViewItem.ListViewSubItem(item, "File"),
-                    new ListViewItem.ListViewSubItem(item, file.LastAccessTime.ToShortDateString())
-                };
-
-                item.SubItems.AddRange(subItems);
-                listView1.Items.Add(item);
-            }
-
             listView1.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
         }
 

@@ -16,21 +16,11 @@ namespace PACTool
         [STAThread]
         static void Main(string[] args)
         {
+            //show window, pass command line to form
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1());
 
-            args = new[] { "ch100.pac" }; //temporary
-
-            using (BinaryReader b = new BinaryReader(File.Open(args[0], FileMode.Open)))
-            {
-
-                //read the file
-                var openPacFile = new PacFileHandling(b);
-
-                //show the file
-                //Application.EnableVisualStyles();
-                //Application.SetCompatibleTextRenderingDefault(false);
-                //Application.Run(new Form1());
-
-            }
         }
     }
 }

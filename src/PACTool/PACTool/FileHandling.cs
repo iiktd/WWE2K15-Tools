@@ -9,55 +9,65 @@ using System.IO;
 namespace PACTool
 {
 
-    class PacHeader
+    public class PacHeader
     {
-        public char[] id;
+        public string id;
         public int listSize;
         public int dataSize;
         int version;
     };
-    class PacDir
+    public class PacDir
     {
-        public char[] id;
+        public string id;
         public int nfiles;
         byte[] unknown;//6 bytes
         public PacFile[] file; //nfiles divided by 4
 
     };
-    class PacFile
+    public class PacFile
     {
-        public char[] id; //4 bytes epac, 8 bytes epk8
+        public string id; //4 bytes epac, 8 bytes epk8
         byte[] unknown1; //3 bytes
         public int size;
         byte unknown2;
     };
-
-    class PacFileHandling 
+    public class Pac
     {
-        BinaryReader pac;
+        public PacHeader header;
+        public PacDir[] dir;
+    }
+    
+
+    public class PacFileHandling 
+    {
+        public BinaryReader pacStream;
+        public Pac pacFile;
 
         public PacFileHandling(BinaryReader b)
         {
-            pac = b;
-            ReadHeader();
-            ReadDir();
+            pacFile = new Pac();
+            pacStream = b;
+            pacFile.header = ReadHeader();
+
+            pacFile.dir = new PacDir[1];
+            pacFile.dir[0] = ReadDir();
         }
 
-        PacHeader ReadHeader()
+        public PacHeader ReadHeader()
         {
             var header = new PacHeader();
-            header.id = pac.ReadChars(4);
-            header.listSize = (int)pac.ReadUInt32();
-            header.dataSize = (int)pac.ReadUInt32();
+            header.id = new string(pacStream.ReadChars(4));
+            header.listSize = (int)pacStream.ReadUInt32();
+            header.dataSize = (int)pacStream.ReadUInt32();
             return header;
         }
-        PacDir ReadDir()
+        public PacDir ReadDir()
         {
             var directory = new PacDir();
-            pac.BaseStream.Seek(2048, SeekOrigin.Begin);
-            directory.id = pac.ReadChars(4);
-            directory.nfiles = (int)pac.ReadUInt16()/4;
-            pac.ReadBytes(6);
+            pacStream.BaseStream.Seek(2048, SeekOrigin.Begin);
+            directory.id = new string(pacStream.ReadChars(4));
+            directory.nfiles = (int)pacStream.ReadUInt16() / 4;
+            pacStream.ReadBytes(6);
             directory.file = new PacFile[directory.nfiles];
             for (int i = 0; i < directory.nfiles; i++)
             {
@@ -68,14 +78,14 @@ namespace PACTool
 
                 return directory;
         }
-        PacFile ReadFile()
+        public PacFile ReadFile()
         {
             var pacfile = new PacFile();
 
-            pacfile.id = pac.ReadChars(8);
-            pac.ReadBytes(3);
-            pacfile.size = (int)pac.ReadUInt32();
-            pac.ReadByte();
+            pacfile.id = new string(pacStream.ReadChars(8));
+            pacStream.ReadBytes(3);
+            pacfile.size = (int)pacStream.ReadUInt32();
+            pacStream.ReadByte();
 
             return pacfile;
         }

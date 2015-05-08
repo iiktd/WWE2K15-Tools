@@ -38,6 +38,8 @@
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.option1ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.option2ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -83,7 +85,9 @@
             // listView1
             // 
             this.listView1.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader1});
+            this.columnHeader1,
+            this.columnHeader2,
+            this.columnHeader3});
             this.listView1.ContextMenuStrip = this.contextMenuStrip1;
             this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listView1.Location = new System.Drawing.Point(0, 0);
@@ -97,6 +101,7 @@
             // columnHeader1
             // 
             this.columnHeader1.Text = "Name";
+            this.columnHeader1.Width = 171;
             // 
             // contextMenuStrip1
             // 
@@ -119,6 +124,15 @@
             this.option2ToolStripMenuItem.Name = "option2ToolStripMenuItem";
             this.option2ToolStripMenuItem.Size = new System.Drawing.Size(120, 22);
             this.option2ToolStripMenuItem.Text = "Option 2";
+            // 
+            // columnHeader2
+            // 
+            this.columnHeader2.Text = "Type";
+            this.columnHeader2.Width = 99;
+            // 
+            // columnHeader3
+            // 
+            this.columnHeader3.Text = "Size";
             // 
             // Form1
             // 
@@ -147,6 +161,8 @@
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
         private System.Windows.Forms.ToolStripMenuItem option1ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem option2ToolStripMenuItem;
+        private System.Windows.Forms.ColumnHeader columnHeader2;
+        private System.Windows.Forms.ColumnHeader columnHeader3;
     }
 }
 
