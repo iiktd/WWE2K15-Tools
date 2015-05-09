@@ -26,10 +26,14 @@ namespace PACTool
     };
     public class PacFile
     {
+        //FileIO
         public string id; //4 bytes epac, 8 bytes epk8
         byte[] unknown1; //3 bytes
         public int size;
         byte unknown2;
+
+        //Useful Stuff
+        public int offset;
     };
     public class Pac
     {
@@ -49,11 +53,11 @@ namespace PACTool
             pacStream = b;
             pacFile.header = ReadHeader();
 
-            pacFile.dir = new PacDir[1];
-            pacFile.dir[0] = ReadDir();
+            //pacFile.dir = new PacDir[1];
+            pacFile.dir = ReadDir().ToArray();
         }
 
-        public PacHeader ReadHeader()
+        PacHeader ReadHeader()
         {
             var header = new PacHeader();
             header.id = new string(pacStream.ReadChars(4));
@@ -61,24 +65,35 @@ namespace PACTool
             header.dataSize = (int)pacStream.ReadUInt32();
             return header;
         }
-        public PacDir ReadDir()
+        List<PacDir> ReadDir()
         {
-            var directory = new PacDir();
+            var iOffset = 16384; //Start of data chunk
+            var dirList = new List<PacDir>();
             pacStream.BaseStream.Seek(2048, SeekOrigin.Begin);
-            directory.id = new string(pacStream.ReadChars(4));
-            directory.nfiles = (int)pacStream.ReadUInt16() / 4;
-            pacStream.ReadBytes(6);
-            directory.file = new PacFile[directory.nfiles];
-            for (int i = 0; i < directory.nfiles; i++)
+
+            while (pacStream.BaseStream.Position < (2048+pacFile.header.listSize)) 
             {
-                directory.file[i] = ReadFile();
+                var directory = new PacDir();
+                directory.id = new string(pacStream.ReadChars(4));
+                directory.nfiles = (int)pacStream.ReadUInt16() / 4;
+                pacStream.ReadBytes(6);
+                directory.file = new PacFile[directory.nfiles];
+                for (int i = 0; i < directory.nfiles; i++)
+                {
+                    directory.file[i] = ReadFile();
+                    directory.file[i].offset = iOffset;
+
+                    //Need to 2048 byte align these chunks
+                    var size = directory.file[i].size;
+                    iOffset += size + ((2048 - (size % 2048)) % 2048);
+                }
+
+                dirList.Add(directory);
             }
 
-
-
-                return directory;
+            return dirList;
         }
-        public PacFile ReadFile()
+        PacFile ReadFile()
         {
             var pacfile = new PacFile();
 
@@ -88,6 +103,28 @@ namespace PACTool
             pacStream.ReadByte();
 
             return pacfile;
+        }
+
+        public void ExtractFile(ListViewItem item) 
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            int offset = Convert.ToInt32(item.SubItems[3].Text);
+            int size = Convert.ToInt32(item.SubItems[2].Text);
+            
+            //Experienced coders will probably cringe at this...
+            var newFile = new byte[size];
+            pacStream.BaseStream.Seek(offset, SeekOrigin.Begin);
+            newFile = pacStream.ReadBytes(size);
+
+            //build path\\filename.ext
+            string filename = Path.GetDirectoryName(args[0]) + "\\" + item.SubItems[0].Text;
+            using (BinaryWriter b = new BinaryWriter(File.Open(filename, FileMode.Create)))
+            {
+                foreach (var i in newFile)
+                {
+                    b.Write(i);
+                }
+            }
         }
     }
 }

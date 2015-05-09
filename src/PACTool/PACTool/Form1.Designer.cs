@@ -37,7 +37,6 @@
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.option1ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.option2ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.columnHeader2 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -106,24 +105,18 @@
             // contextMenuStrip1
             // 
             this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.option1ToolStripMenuItem,
-            this.option2ToolStripMenuItem});
+            this.option1ToolStripMenuItem});
             this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(121, 48);
+            this.contextMenuStrip1.Size = new System.Drawing.Size(153, 48);
             this.contextMenuStrip1.Text = "Options";
             this.contextMenuStrip1.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuStrip1_Opening);
             // 
             // option1ToolStripMenuItem
             // 
             this.option1ToolStripMenuItem.Name = "option1ToolStripMenuItem";
-            this.option1ToolStripMenuItem.Size = new System.Drawing.Size(120, 22);
-            this.option1ToolStripMenuItem.Text = "Option 1";
-            // 
-            // option2ToolStripMenuItem
-            // 
-            this.option2ToolStripMenuItem.Name = "option2ToolStripMenuItem";
-            this.option2ToolStripMenuItem.Size = new System.Drawing.Size(120, 22);
-            this.option2ToolStripMenuItem.Text = "Option 2";
+            this.option1ToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.option1ToolStripMenuItem.Text = "Extract";
+            this.option1ToolStripMenuItem.Click += new System.EventHandler(this.option1ToolStripMenuItem_Click);
             // 
             // columnHeader2
             // 
@@ -160,7 +153,6 @@
         private System.Windows.Forms.ColumnHeader columnHeader1;
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
         private System.Windows.Forms.ToolStripMenuItem option1ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem option2ToolStripMenuItem;
         private System.Windows.Forms.ColumnHeader columnHeader2;
         private System.Windows.Forms.ColumnHeader columnHeader3;
     }
