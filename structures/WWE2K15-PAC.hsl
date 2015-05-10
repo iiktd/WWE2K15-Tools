@@ -25,27 +25,41 @@ struct EPK8_HierarchyB
 
 } EPK8_HierarchyB ;
 
-#pragma show()
-
-struct EPAC_HierarchyA
+struct EPAC_HierarchyB
 {
-	char				id[4] ; //Some type of tag
+	char				id[4] ;  //Some type of tag
 	ushort				unknown ;
 	byte				unknown ;
 	uint				size ; 
 	byte				unknown ;
-	
-} EPAC_HierarchyA ;
 
-struct EPK8_HierarchyA
+} EPAC_HierarchyB ;
+
+#pragma show()
+
+struct PAC_HierarchyA
 {
 	char				id[4] ; //Some type of tag
 	ushort				Count ;
 	ushort				unknown ;
 	uint				unknown ;
-	EPK8_HierarchyB		List[Count/4];
+	EPAC_HierarchyB		List[Count/3];
 	
-} EPK8_HierarchyA ;
+	switch (__getUDWordAt(0))
+	{
+		//I don't think Hex Workshop has a way of dynamically adding structures, 
+		//Hence the autoparse function
+		//This won't work with EPK8's that have multiple hierarchies.
+		case 0x43415045:
+			EPAC_HierarchyB		List[Count/3]; break;
+		case 0x384B5045:
+			EPK8_HierarchyB		List[Count/4];	break;
+		default:
+			break;
+	} ;
+	
+} PAC_HierarchyA ;
+
 
 struct PAC 
 {
@@ -58,19 +72,8 @@ struct PAC
 	
 	//14336 byte aligned (2048*7)
 	//If the file listing is bigger than that I have no idea what will happen
-	switch (__getUDWordAt(0))
-	{
-		//I don't think Hex Workshop has a way of dynamically adding structures, 
-		//Hence the autoparse function
-		//This won't work with EPK8's that have multiple hierarchies.
-		case 0x43415045:
-			EPAC_HierarchyA	list[FileListSize/12]; break;
-		case 0x384B5045:
-			EPK8_HierarchyA	list; break;
-		default:
-			break;
-	} ;
-	blob			align[14336-FileListSize] ; 
+	PAC_HierarchyA		FileList;
+	blob				align[14336-FileListSize] ; 
 	
 	//Each pach is 2048 byte aligned
 	blob			data[FileDataSize] ;
@@ -98,15 +101,7 @@ function AutoParse
 		//file hierarchy
 		while (pos < 0x0800+listSize)
 		{
-			if (type == 944459845) //EPK8
-			{
-				pos += __addStructureAt(pos, "EPK8_HierarchyA", "") ;
-			};
-			if (type == 1128353861) //EPAC
-			{
-				pos += __addStructureAt(pos, "EPAC_HierarchyA", "") ; //I'm still not sure about this...
-			};
-
+			pos += __addStructureAt(pos, "PAC_HierarchyA", "") ;
 		};
 		pos=0x4000; //aligned
 		

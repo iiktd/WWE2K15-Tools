@@ -52,8 +52,6 @@ namespace PACTool
             pacFile = new Pac();
             pacStream = b;
             pacFile.header = ReadHeader();
-
-            //pacFile.dir = new PacDir[1];
             pacFile.dir = ReadDir().ToArray();
         }
 
@@ -73,22 +71,44 @@ namespace PACTool
 
             while (pacStream.BaseStream.Position < (2048+pacFile.header.listSize)) 
             {
-                var directory = new PacDir();
-                directory.id = new string(pacStream.ReadChars(4));
-                directory.nfiles = (int)pacStream.ReadUInt16() / 4;
-                pacStream.ReadBytes(6);
-                directory.file = new PacFile[directory.nfiles];
-                for (int i = 0; i < directory.nfiles; i++)
+                if (pacFile.header.id == "EPK8")
                 {
-                    directory.file[i] = ReadFile();
-                    directory.file[i].offset = iOffset;
+                    var directory = new PacDir();
+                    directory.id = new string(pacStream.ReadChars(4));
+                    directory.nfiles = (int)pacStream.ReadUInt16() / 4;
+                    pacStream.ReadBytes(6);
+                    directory.file = new PacFile[directory.nfiles];
+                    for (int i = 0; i < directory.nfiles; i++)
+                    {
+                        directory.file[i] = ReadFile();
+                        directory.file[i].offset = iOffset;
 
-                    //Need to 2048 byte align these chunks
-                    var size = directory.file[i].size;
-                    iOffset += size + ((2048 - (size % 2048)) % 2048);
+                        //Need to 2048 byte align these chunks
+                        var size = directory.file[i].size;
+                        iOffset += size + ((2048 - (size % 2048)) % 2048);
+                    }
+                    dirList.Add(directory);
                 }
+                else 
+                {
+                    //EPAC, we're fudging this since we don't know how directories are laid out.
+                    var directory = new PacDir();
+                    directory.id = new string(pacStream.ReadChars(4));
+                    directory.nfiles = (int)pacStream.ReadUInt16() / 3;
+                    pacStream.ReadBytes(6);
+                    directory.file = new PacFile[directory.nfiles];
+                    directory.file = new PacFile[directory.nfiles];
+                    for (int i = 0; i < directory.nfiles; i++)
+                    {
+                        directory.file[i] = ReadFile();
+                        directory.file[i].offset = iOffset;
 
-                dirList.Add(directory);
+                        //Need to 2048 byte align these chunks
+                        var size = directory.file[i].size;
+                        iOffset += size + ((2048 - (size % 2048)) % 2048);
+                    }
+                    dirList.Add(directory);
+                }
             }
 
             return dirList;
@@ -97,7 +117,9 @@ namespace PACTool
         {
             var pacfile = new PacFile();
 
-            pacfile.id = new string(pacStream.ReadChars(8));
+            if (pacFile.header.id == "EPK8") { pacfile.id = new string(pacStream.ReadChars(8)); }
+            else { pacfile.id = new string(pacStream.ReadChars(4)); }
+            
             pacStream.ReadBytes(3);
             pacfile.size = (int)pacStream.ReadUInt32();
             pacStream.ReadByte();
@@ -117,7 +139,7 @@ namespace PACTool
             newFile = pacStream.ReadBytes(size);
 
             //build path\\filename.ext
-            string filename = Path.GetDirectoryName(args[0]) + "\\" + item.SubItems[0].Text;
+            string filename = Path.GetDirectoryName(args[1]) + "\\" + item.SubItems[0].Text;
             using (BinaryWriter b = new BinaryWriter(File.Open(filename, FileMode.Create)))
             {
                 foreach (var i in newFile)

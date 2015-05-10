@@ -31,26 +31,20 @@ namespace PACTool
         //TreeView stuff
         private void PopulateTreeView()
         {
-
-            //args = new[] { "ch100.pac" }; //temporary
             //This populates the tree/list and then closes the file. Keeping it in memory is for chumps.
             using (BinaryReader b = new BinaryReader(File.Open(args[1], FileMode.Open)))
             {
                 //read the file
                 var openPacFile = new PacFileHandling(b);
 
-                //TreeNode rootNode;
+                //create the tree
                 var rootNode = new TreeNode(openPacFile.pacFile.header.id.ToString());
                 rootNode.Tag = null;
 
-                //This needs to be fixed for pacs with multiple dirs
+                //This populates sub directories under the root
                 GetDirectories(openPacFile.pacFile.dir, rootNode);
-                /*
-                var aNode = new TreeNode(openPacFile.pacFile.dir[0].id, 0, 0);
-                aNode.Tag = openPacFile.pacFile.dir[0];
-                aNode.ImageKey = "folder";
-                rootNode.Nodes.Add(aNode);
-                */ 
+
+                //Add the root to the tree
                 treeView1.Nodes.Add(rootNode);
             }
         }
@@ -58,18 +52,13 @@ namespace PACTool
         private void GetDirectories(PacDir[] subDirs, TreeNode nodeToAddTo)
         {
             TreeNode aNode;
-            //PacDir[] subSubDirs;
-            
             foreach (PacDir subDir in subDirs)
             {
                 aNode = new TreeNode(subDir.id, 0, 0);
                 aNode.Tag = subDir;
                 aNode.ImageKey = "folder";
-
                 nodeToAddTo.Nodes.Add(aNode);
             }
-            
-
         }
 
         //Mouse click stuff
@@ -83,8 +72,6 @@ namespace PACTool
 
             if (e.Node.Tag != null)
             {
-
-                //Fudge the dir array for testing
                 foreach (PacFile file in nodeDirInfo.file)
                 {
                     item = new ListViewItem(file.id, 1);
