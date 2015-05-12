@@ -15,7 +15,7 @@ namespace PACTool
         public int listSize;
         public int dataSize;
         int version;
-    };
+    }
     public class PacDir
     {
         public string id;
@@ -23,7 +23,7 @@ namespace PACTool
         byte[] unknown;//6 bytes
         public PacFile[] file; //nfiles divided by 4
 
-    };
+    }
     public class PacFile
     {
         //FileIO
@@ -34,7 +34,28 @@ namespace PACTool
 
         //Useful Stuff
         public int offset;
-    };
+
+        //byte array for stream
+        public byte[] stream;
+    }
+
+    public class PACH 
+    {
+        public string id; //4 bytes
+        public int nfiles;
+        public PACHFile[] file;
+    }
+
+    public class PACHFile 
+    {
+        public int id;
+        public int offset; //relative to start of data
+        public int size;
+
+        //byte array for stream
+        public byte[] stream;
+    }
+
     public class Pac
     {
         public PacHeader header;
@@ -59,8 +80,17 @@ namespace PACTool
         {
             var header = new PacHeader();
             header.id = new string(pacStream.ReadChars(4));
-            header.listSize = (int)pacStream.ReadUInt32();
-            header.dataSize = (int)pacStream.ReadUInt32();
+
+            if (header.id == "EPK8" || header.id == "EPAC") 
+            {
+                header.listSize = (int)pacStream.ReadUInt32();
+                header.dataSize = (int)pacStream.ReadUInt32();
+            }
+            else 
+            { 
+                //PACH 
+            }
+            
             return header;
         }
         List<PacDir> ReadDir()
@@ -71,11 +101,10 @@ namespace PACTool
 
             while (pacStream.BaseStream.Position < (2048+pacFile.header.listSize)) 
             {
-                if (pacFile.header.id == "EPK8")
-                {
                     var directory = new PacDir();
                     directory.id = new string(pacStream.ReadChars(4));
-                    directory.nfiles = (int)pacStream.ReadUInt16() / 4;
+                    if (pacFile.header.id == "EPK8") { directory.nfiles = (int)pacStream.ReadUInt16() / 4; }
+                    else { directory.nfiles = (int)pacStream.ReadUInt16() / 3; } //EPAC
                     pacStream.ReadBytes(6);
                     directory.file = new PacFile[directory.nfiles];
                     for (int i = 0; i < directory.nfiles; i++)
@@ -86,29 +115,15 @@ namespace PACTool
                         //Need to 2048 byte align these chunks
                         var size = directory.file[i].size;
                         iOffset += size + ((2048 - (size % 2048)) % 2048);
-                    }
-                    dirList.Add(directory);
-                }
-                else 
-                {
-                    //EPAC, we're fudging this since we don't know how directories are laid out.
-                    var directory = new PacDir();
-                    directory.id = new string(pacStream.ReadChars(4));
-                    directory.nfiles = (int)pacStream.ReadUInt16() / 3;
-                    pacStream.ReadBytes(6);
-                    directory.file = new PacFile[directory.nfiles];
-                    directory.file = new PacFile[directory.nfiles];
-                    for (int i = 0; i < directory.nfiles; i++)
-                    {
-                        directory.file[i] = ReadFile();
-                        directory.file[i].offset = iOffset;
 
-                        //Need to 2048 byte align these chunks
-                        var size = directory.file[i].size;
-                        iOffset += size + ((2048 - (size % 2048)) % 2048);
+                        //Check for PACH
+                        var pos = pacStream.BaseStream.Position;
+                        pacStream.BaseStream.Position = directory.file[i].offset;
+                        directory.file[i].stream = pacStream.ReadBytes(size);
+                        pacStream.BaseStream.Position = pos;
+
                     }
                     dirList.Add(directory);
-                }
             }
 
             return dirList;
@@ -118,35 +133,39 @@ namespace PACTool
             var pacfile = new PacFile();
 
             if (pacFile.header.id == "EPK8") { pacfile.id = new string(pacStream.ReadChars(8)); }
-            else { pacfile.id = new string(pacStream.ReadChars(4)); }
+            else if (pacFile.header.id == "EPAC") { pacfile.id = new string(pacStream.ReadChars(4)); }
+            else { } //PACH
             
             pacStream.ReadBytes(3);
             pacfile.size = (int)pacStream.ReadUInt32();
             pacStream.ReadByte();
-
             return pacfile;
         }
 
-        public void ExtractFile(ListViewItem item) 
+        PACH ReadSubFile(byte[] file) 
         {
-            string[] args = Environment.GetCommandLineArgs();
-            int offset = Convert.ToInt32(item.SubItems[3].Text);
-            int size = Convert.ToInt32(item.SubItems[2].Text);
-            
-            //Experienced coders will probably cringe at this...
-            var newFile = new byte[size];
-            pacStream.BaseStream.Seek(offset, SeekOrigin.Begin);
-            newFile = pacStream.ReadBytes(size);
+            MemoryStream pachmem = new MemoryStream(file);
+            BinaryReader pachStream = new BinaryReader(pachmem);
+            var subfile = new PACH();
 
-            //build path\\filename.ext
-            string filename = Path.GetDirectoryName(args[1]) + "\\" + item.SubItems[0].Text;
-            using (BinaryWriter b = new BinaryWriter(File.Open(filename, FileMode.Create)))
+            subfile.id = new string(pachStream.ReadChars(4)); //Obviously PACH
+            subfile.nfiles = (int)pacStream.ReadUInt32();
+            subfile.file = new PACHFile[subfile.nfiles];
+            for(var i=0; i<subfile.nfiles; i++)
             {
-                foreach (var i in newFile)
-                {
-                    b.Write(i);
-                }
+                subfile.file[i] = ReadSubSubFile();
             }
+
+            return subfile;
         }
+        PACHFile ReadSubSubFile() 
+        {
+            var pachfile = new PACHFile();
+
+
+            return pachfile;
+        }
+
+        
     }
 }

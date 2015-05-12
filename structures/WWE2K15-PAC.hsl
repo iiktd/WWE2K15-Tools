@@ -35,6 +35,17 @@ struct EPAC_HierarchyB
 
 } EPAC_HierarchyB ;
 
+struct PACHList
+{
+		uint	FileNumber;
+		uint	FileOffset; //Relative to start of data
+		uint	FileSize;
+		
+} PACHList ;
+
+
+
+
 #pragma show()
 
 struct PAC_HierarchyA
@@ -43,7 +54,7 @@ struct PAC_HierarchyA
 	ushort				Count ;
 	ushort				unknown ;
 	uint				unknown ;
-	EPAC_HierarchyB		List[Count/3];
+	//EPAC_HierarchyB		List[Count/3];
 	
 	switch (__getUDWordAt(0))
 	{
@@ -81,6 +92,17 @@ struct PAC
 
 	//There is something else going on after this point but it's all mostly null.
 } ;
+
+struct PACH 
+{
+	//sigh...
+	char				id[4] ;
+	uint				Count;
+	PACHList			Array[Count];
+
+} ;
+
+
 
 /* this is hex workshop specific but not too hard to convert to c|c++|c# and such */
 function AutoParse
