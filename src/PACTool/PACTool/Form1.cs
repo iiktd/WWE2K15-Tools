@@ -76,7 +76,7 @@ namespace PACTool
                     subItems = new ListViewItem.ListViewSubItem[]
                     {
                          //new ListViewItem.ListViewSubItem(item, "File")
-                        new ListViewItem.ListViewSubItem(item, System.Text.Encoding.UTF8.GetString(file.stream, 0, 4)) //Type
+                        new ListViewItem.ListViewSubItem(item, file.subFile.id.ToString()) //Type
                         ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
                         ,new ListViewItem.ListViewSubItem(item, file.offset.ToString())
                     };

@@ -36,7 +36,7 @@ namespace PACTool
         public int offset;
 
         //byte array for stream
-        public byte[] stream;
+        public PACH subFile;
     }
 
     public class PACH 
@@ -119,7 +119,7 @@ namespace PACTool
                         //Check for PACH
                         var pos = pacStream.BaseStream.Position;
                         pacStream.BaseStream.Position = directory.file[i].offset;
-                        directory.file[i].stream = pacStream.ReadBytes(size);
+                        directory.file[i].subFile = ReadSubFile(pacStream.ReadBytes(size));
                         pacStream.BaseStream.Position = pos;
 
                     }
@@ -149,18 +149,23 @@ namespace PACTool
             var subfile = new PACH();
 
             subfile.id = new string(pachStream.ReadChars(4)); //Obviously PACH
-            subfile.nfiles = (int)pacStream.ReadUInt32();
+            subfile.nfiles = (int)pachStream.ReadUInt32();
             subfile.file = new PACHFile[subfile.nfiles];
             for(var i=0; i<subfile.nfiles; i++)
             {
-                subfile.file[i] = ReadSubSubFile();
+                subfile.file[i] = ReadSubSubFile(pachStream);
             }
 
+            pachStream.Close();
+            pachmem.Close();
             return subfile;
         }
-        PACHFile ReadSubSubFile() 
+        PACHFile ReadSubSubFile(BinaryReader pachStream) 
         {
             var pachfile = new PACHFile();
+            pachfile.id = (int)pachStream.ReadUInt32();
+            pachfile.offset = (int)pachStream.ReadUInt32();
+            pachfile.size = (int)pachStream.ReadUInt32();
 
 
             return pachfile;
