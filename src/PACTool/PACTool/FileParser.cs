@@ -34,9 +34,8 @@ namespace PACTool
 
         //Useful Stuff
         public int offset;
-
-        //byte array for stream
-        public PACH subFile;
+        public byte[] stream;
+        public PACH file;
     }
 
     public class PACH 
@@ -48,12 +47,15 @@ namespace PACTool
 
     public class PACHFile 
     {
-        public int id;
+        public string id;
         public int offset; //relative to start of data
         public int size;
 
         //byte array for stream
         public byte[] stream;
+
+        //sigh...
+        public PACH file;
     }
 
     public class Pac
@@ -85,6 +87,7 @@ namespace PACTool
             {
                 header.listSize = (int)pacStream.ReadUInt32();
                 header.dataSize = (int)pacStream.ReadUInt32();
+                pacStream.ReadUInt32(); //We don't need the version right now...
             }
             else 
             { 
@@ -103,8 +106,14 @@ namespace PACTool
             {
                     var directory = new PacDir();
                     directory.id = new string(pacStream.ReadChars(4));
-                    if (pacFile.header.id == "EPK8") { directory.nfiles = (int)pacStream.ReadUInt16() / 4; }
-                    else { directory.nfiles = (int)pacStream.ReadUInt16() / 3; } //EPAC
+                    if (pacFile.header.id == "EPK8") 
+                    { 
+                        directory.nfiles = (int)pacStream.ReadUInt16() / 4; 
+                    }
+                    else 
+                    { 
+                        directory.nfiles = (int)pacStream.ReadUInt16() / 3; 
+                    } //EPAC
                     pacStream.ReadBytes(6);
                     directory.file = new PacFile[directory.nfiles];
                     for (int i = 0; i < directory.nfiles; i++)
@@ -112,16 +121,17 @@ namespace PACTool
                         directory.file[i] = ReadFile();
                         directory.file[i].offset = iOffset;
 
-                        //Need to 2048 byte align these chunks
-                        var size = directory.file[i].size;
-                        iOffset += size + ((2048 - (size % 2048)) % 2048);
-
-                        //Check for PACH
+                        //Get Pach
                         var pos = pacStream.BaseStream.Position;
                         pacStream.BaseStream.Position = directory.file[i].offset;
-                        directory.file[i].subFile = ReadSubFile(pacStream.ReadBytes(size));
+                        directory.file[i].stream = pacStream.ReadBytes(directory.file[i].size);
+                        directory.file[i].file = ReadSubFile(directory.file[i].stream);
                         pacStream.BaseStream.Position = pos;
 
+
+
+                        //Need to 2048 byte align these chunks
+                        iOffset += directory.file[i].size + ((2048 - (directory.file[i].size % 2048)) % 2048);
                     }
                     dirList.Add(directory);
             }
@@ -132,9 +142,18 @@ namespace PACTool
         {
             var pacfile = new PacFile();
 
-            if (pacFile.header.id == "EPK8") { pacfile.id = new string(pacStream.ReadChars(8)); }
-            else if (pacFile.header.id == "EPAC") { pacfile.id = new string(pacStream.ReadChars(4)); }
-            else { } //PACH
+            if (pacFile.header.id == "EPK8") 
+            { 
+                pacfile.id = new string(pacStream.ReadChars(8)); 
+            }
+            else if (pacFile.header.id == "EPAC") 
+            { 
+                pacfile.id = new string(pacStream.ReadChars(4)); 
+            }
+            else 
+            {
+                //PACH??
+            } 
             
             pacStream.ReadBytes(3);
             pacfile.size = (int)pacStream.ReadUInt32();
@@ -149,11 +168,33 @@ namespace PACTool
             var subfile = new PACH();
 
             subfile.id = new string(pachStream.ReadChars(4)); //Obviously PACH
+
+            if (subfile.id != "PACH")
+            {
+                return subfile; //So obviously not. Thanks a lot createmode.pac....
+            }
+
+
             subfile.nfiles = (int)pachStream.ReadUInt32();
             subfile.file = new PACHFile[subfile.nfiles];
             for(var i=0; i<subfile.nfiles; i++)
             {
                 subfile.file[i] = ReadSubSubFile(pachStream);
+            }
+            for (var i = 0; i < subfile.nfiles; i++)
+            {
+                var pos = pachStream.BaseStream.Position;
+                subfile.file[i].stream = pachStream.ReadBytes(subfile.file[i].size);
+                byte[] header = new byte[4]; 
+                Buffer.BlockCopy(subfile.file[i].stream, 0, header, 0, 4);
+                var recursionCheck = System.Text.Encoding.UTF8.GetString(header);
+
+                if (recursionCheck == "PACH")
+                {
+                    subfile.file[i].file = ReadSubFile(subfile.file[i].stream);
+                }
+
+                pachStream.BaseStream.Position = pos;
             }
 
             pachStream.Close();
@@ -163,11 +204,9 @@ namespace PACTool
         PACHFile ReadSubSubFile(BinaryReader pachStream) 
         {
             var pachfile = new PACHFile();
-            pachfile.id = (int)pachStream.ReadUInt32();
+            pachfile.id = pachStream.ReadInt32().ToString();
             pachfile.offset = (int)pachStream.ReadUInt32();
             pachfile.size = (int)pachStream.ReadUInt32();
-
-
             return pachfile;
         }
 
