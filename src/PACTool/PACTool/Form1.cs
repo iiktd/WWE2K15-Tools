@@ -10,22 +10,20 @@ using System.Windows.Forms;
 
 using System.IO;
 
-// this is needed to use DLLImport
-using System.Runtime.InteropServices;
-
 namespace PACTool
 {
     public partial class Form1 : Form
     {
 
         public string[] args = Environment.GetCommandLineArgs();
-        public BinaryReader pacStream;
 
         public Form1()
         {
             InitializeComponent();
-            pacStream = new BinaryReader(File.Open(args[1], FileMode.Open));
-            PopulateTreeView();
+            using (BinaryReader pacStream = new BinaryReader(File.Open(args[1], FileMode.Open))) 
+            {
+                PopulateTreeView(pacStream);
+            }
             this.Text = Path.GetFileName(args[1]);
             this.treeView1.NodeMouseClick += new TreeNodeMouseClickEventHandler(this.treeView1_NodeMouseClick);
         }
@@ -34,10 +32,10 @@ namespace PACTool
 
 
         //TreeView stuff
-        private void PopulateTreeView()
+        private void PopulateTreeView(BinaryReader stream)
         {
             //read the file
-                var openPacFile = new PacFileHandling(pacStream);
+            var openPacFile = new PacFileHandling(stream);
 
                 //create the tree
                 var rootNode = new TreeNode(openPacFile.pacFile.header.id.ToString());
@@ -59,7 +57,7 @@ namespace PACTool
                 aNode.Tag = subDir;
                 aNode.ImageKey = "folder";
 
-                GetPACFileDirectories(subDir.file, aNode);
+                GetPACFileDirectories(subDir.PacFiles, aNode);
 
                 nodeToAddTo.Nodes.Add(aNode);
             }
@@ -68,36 +66,39 @@ namespace PACTool
         private void GetPACFileDirectories(PacFile[] subDirs, TreeNode nodeToAddTo) 
         {
             TreeNode aNode;
-            foreach (PacFile subDir in subDirs)
+            foreach (PacFile pacFile in subDirs)
             {
-                if (subDir.file.id == "PACH") 
+                if (pacFile.PACHContainer.id == "PACH") 
                 {
-                    aNode = new TreeNode(subDir.id, 0, 0);
-                    aNode.Tag = subDir;
+                    aNode = new TreeNode(pacFile.id, 0, 0);
+                    aNode.Tag = pacFile;
                     aNode.ImageKey = "Container";
 
-                    if (subDir.id == "PACH")
+                    if (pacFile.PACHContainer != null) 
                     {
-                        foreach (PACHFile subFile in subDir.file.file)
-                        {
-                            if (subFile.file.id == "PACH")
-                            {
-                                GetPACHFileDirectories(subFile, aNode);
-                            }
-                        }
+                        GetPACHFileDirectories(pacFile.PACHContainer.PACHFiles, aNode);
                     }
-
+                    
                     nodeToAddTo.Nodes.Add(aNode);
                 }
             }
         }
-        private void GetPACHFileDirectories(PACHFile subDir, TreeNode nodeToAddTo)
+        private void GetPACHFileDirectories(PACHFile[] subDirs, TreeNode nodeToAddTo)
         {
             TreeNode aNode;
-            aNode = new TreeNode(subDir.id, 0, 0);
-            aNode.Tag = subDir;
-            aNode.ImageKey = "Container";
-            nodeToAddTo.Nodes.Add(aNode);
+            foreach (PACHFile subDir in subDirs) 
+            {
+                if (subDir.SubContainer != null) 
+                {
+                    aNode = new TreeNode(subDir.id, 0, 0);
+                    aNode.Tag = subDir;
+                    aNode.ImageKey = "Container";
+                    
+                    GetPACHFileDirectories(subDir.SubContainer.PACHFiles, aNode);
+
+                    nodeToAddTo.Nodes.Add(aNode);
+                }
+            }  
         }
 
 
@@ -117,27 +118,30 @@ namespace PACTool
                 if (newSelected.Tag.GetType().Equals(typeof(PacDir))) 
                 {
                     PacDir nodeDirInfo = (PacDir)newSelected.Tag;
-                    foreach (var file in nodeDirInfo.file)
+
+                    if (nodeDirInfo.PacFiles != null) 
                     {
-                        item = new ListViewItem(file.id, 2);
-                        item.Tag = file;
-                        subItems = new ListViewItem.ListViewSubItem[]
+                        foreach (var file in nodeDirInfo.PacFiles)
                         {
-                            new ListViewItem.ListViewSubItem(item, file.file.id.ToString()) //Type
-                            ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
-                            ,new ListViewItem.ListViewSubItem(item, file.offset.ToString())
-                        };
-                        item.SubItems.AddRange(subItems);
-                        listView1.Items.Add(item);
+                            item = new ListViewItem(file.id, 2);
+                            item.Tag = file;
+                            subItems = new ListViewItem.ListViewSubItem[]
+                            {
+                                 new ListViewItem.ListViewSubItem(item, file.PACHContainer.id.ToString()) //Header of the contained file
+                                ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
+                            };
+                            item.SubItems.AddRange(subItems);
+                            listView1.Items.Add(item);
+                        }
                     }
                 }
-                if (newSelected.Tag.GetType().Equals(typeof(PacFile)))
+                if (newSelected.Tag.GetType().Equals(typeof(PACHFile)))
                 {
-                    PacFile nodeDirInfo = (PacFile)newSelected.Tag;
+                    PACHFile nodeDirInfo = (PACHFile)newSelected.Tag;
 
-                    if (nodeDirInfo.file.file != null) 
+                    if (nodeDirInfo.SubContainer != null) 
                     {
-                        foreach (PACHFile subFile in nodeDirInfo.file.file)
+                        foreach (PACHFile subFile in nodeDirInfo.SubContainer.PACHFiles)
                         {
                             var subFileText = new byte[4];
                             Buffer.BlockCopy(subFile.stream, 0, subFileText, 0, 4);
@@ -147,34 +151,33 @@ namespace PACTool
                             {
                                  new ListViewItem.ListViewSubItem(item, System.Text.Encoding.UTF8.GetString(subFileText)) //Type
                                 ,new ListViewItem.ListViewSubItem(item, subFile.size.ToString())
-                                ,new ListViewItem.ListViewSubItem(item, subFile.offset.ToString())
                             };
                             item.SubItems.AddRange(subItems);
                             listView1.Items.Add(item);
                         }
                     }
                 }
-
-                if (newSelected.Tag.GetType().Equals(typeof(PACHFile))) 
+                if (newSelected.Tag.GetType().Equals(typeof(PacFile)))
                 {
-                    PACHFile nodeDirInfo = (PACHFile)newSelected.Tag;
+                    PacFile nodeDirInfo = (PacFile)newSelected.Tag;
 
-                    foreach (PACHFile subFile in nodeDirInfo.file.file)
+                    if (nodeDirInfo.PACHContainer.PACHFiles != null) 
                     {
-                        var subFileText = new byte[4];
-                        Buffer.BlockCopy(subFile.stream, 0, subFileText, 0, 4);
-                        item = new ListViewItem(subFile.id, 1);
-                        item.Tag = subFile;
-                        subItems = new ListViewItem.ListViewSubItem[]
+                        foreach (var file in nodeDirInfo.PACHContainer.PACHFiles)
                         {
-                             new ListViewItem.ListViewSubItem(item, System.Text.Encoding.UTF8.GetString(subFileText)) //Type
-                            ,new ListViewItem.ListViewSubItem(item, subFile.size.ToString())
-                            ,new ListViewItem.ListViewSubItem(item, subFile.offset.ToString())
-                        };
-                        item.SubItems.AddRange(subItems);
-                        listView1.Items.Add(item);
+                            var subFileText = new byte[4];
+                            Buffer.BlockCopy(file.stream, 0, subFileText, 0, 4);
+                            item = new ListViewItem(file.id, 1);
+                            item.Tag = file;
+                            subItems = new ListViewItem.ListViewSubItem[]
+                            {
+                                 new ListViewItem.ListViewSubItem(item, System.Text.Encoding.UTF8.GetString(subFileText)) //Type
+                                ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
+                            };
+                            item.SubItems.AddRange(subItems);
+                            listView1.Items.Add(item);
+                        }
                     }
-
                 }
             }
             listView1.AutoResizeColumns(ColumnHeaderAutoResizeStyle.HeaderSize);
@@ -207,7 +210,6 @@ namespace PACTool
             {
                 string filename = Path.GetDirectoryName(args[1]) + "\\" + item.SubItems[0].Text;
 
-
                 if (item.Tag.GetType().Equals(typeof(PacFile)))
                 {
                     PacFile file = (PacFile)item.Tag;
@@ -224,17 +226,7 @@ namespace PACTool
 
                     if (compressionCheck == "BPE ")
                     {
-                        byte[] align = new byte[4]; Buffer.BlockCopy(file.stream, 4, align, 0, 4); //used for byte alignment. But it's being fudged by the dll.
-                        byte[] compressed = new byte[4]; Buffer.BlockCopy(file.stream, 8, compressed, 0, 4);
-                        byte[] uncompressed = new byte[4]; Buffer.BlockCopy(file.stream, 12, uncompressed, 0, 4);
-                        byte[] input = new byte[BitConverter.ToInt32(compressed, 0)]; Buffer.BlockCopy(file.stream, 16, input, 0, file.stream.Length - 16);
-                        byte[] output = new byte[BitConverter.ToInt32(uncompressed, 0)];
-                        int padding = BitConverter.ToInt32(uncompressed, 0) - BitConverter.ToInt32(compressed, 0);
-
-                        if (yukes_bpe(input, BitConverter.ToInt32(compressed, 0), output, BitConverter.ToInt32(uncompressed, 0), padding) == BitConverter.ToInt32(uncompressed, 0))
-                        {
-                            efile.ExtractFile(output, filename);
-                        }
+                        efile.DecompressBPE(file.stream, filename);
                     }
                     else
                     {
@@ -248,35 +240,19 @@ namespace PACTool
                     PACH file = (PACH)item.Tag;
 
                     //We're going sloppily do this here for now
-                    byte[] header = new byte[4]; Buffer.BlockCopy(file.file[0].stream, 0, header, 0, 4);
+                    byte[] header = new byte[4]; Buffer.BlockCopy(file.PACHFiles[0].stream, 0, header, 0, 4);
 
                     if (System.Text.Encoding.UTF8.GetString(header) == "BPE ") 
                     {
-                        byte[] align = new byte[4]; Buffer.BlockCopy(file.file[0].stream, 4, align, 0, 4); //used for byte alignment. But it's being fudged by the dll.
-                        byte[] compressed = new byte[4]; Buffer.BlockCopy(file.file[0].stream, 8, compressed, 0, 4);
-                        byte[] uncompressed = new byte[4]; Buffer.BlockCopy(file.file[0].stream, 12, uncompressed, 0, 4);
-                        byte[] input = new byte[BitConverter.ToInt32(compressed, 0)]; Buffer.BlockCopy(file.file[0].stream, 16, input, 0, file.file[0].stream.Length - 16);
-                        byte[] output = new byte[BitConverter.ToInt32(uncompressed, 0)];
-                        int padding = BitConverter.ToInt32(uncompressed, 0) - BitConverter.ToInt32(compressed, 0);
-
-                        if (yukes_bpe(input, BitConverter.ToInt32(compressed, 0), output, BitConverter.ToInt32(uncompressed, 0), padding) == BitConverter.ToInt32(uncompressed, 0))
-                        {
-                            efile.ExtractFile(output, filename);
-                        }
+                        efile.DecompressBPE(file.PACHFiles[0].stream, filename);
                     }
                     else 
                     {
                         //not compressed
-                        efile.ExtractFile(file.file[0].stream, filename);
+                        efile.ExtractFile(file.PACHFiles[0].stream, filename);
                     }
-                   
-
                 }
             }
         }
-
-        // this is where we load the functions from our unmanaged dll
-        [DllImport("YukesBPE.dll")]
-        public static extern int yukes_bpe(byte[] input, int insz, byte[] ouput, int outsz, int fill_outsz);
     }
 }

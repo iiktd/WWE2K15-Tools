@@ -21,7 +21,7 @@ namespace PACTool
         public string id;
         public int nfiles;
         byte[] unknown;//6 bytes
-        public PacFile[] file; //nfiles divided by 4
+        public PacFile[] PacFiles; //nfiles divided by 4
 
     }
     public class PacFile
@@ -35,14 +35,14 @@ namespace PACTool
         //Useful Stuff
         public int offset;
         public byte[] stream;
-        public PACH file;
+        public PACH PACHContainer;
     }
 
     public class PACH 
     {
         public string id; //4 bytes
         public int nfiles;
-        public PACHFile[] file;
+        public PACHFile[] PACHFiles;
     }
 
     public class PACHFile 
@@ -55,7 +55,7 @@ namespace PACTool
         public byte[] stream;
 
         //sigh...
-        public PACH file;
+        public PACH SubContainer;
     }
 
     public class Pac
@@ -113,32 +113,36 @@ namespace PACTool
                     else 
                     { 
                         directory.nfiles = (int)pacStream.ReadUInt16() / 3; 
-                    } //EPAC
+                    }
                     pacStream.ReadBytes(6);
-                    directory.file = new PacFile[directory.nfiles];
+
+                    directory.PacFiles = new PacFile[directory.nfiles];
                     for (int i = 0; i < directory.nfiles; i++)
                     {
-                        directory.file[i] = ReadFile();
-                        directory.file[i].offset = iOffset;
+                        directory.PacFiles[i] = ReadPacFile();
+                        directory.PacFiles[i].offset = iOffset;
 
                         //Get Pach
                         var pos = pacStream.BaseStream.Position;
-                        pacStream.BaseStream.Position = directory.file[i].offset;
-                        directory.file[i].stream = pacStream.ReadBytes(directory.file[i].size);
-                        directory.file[i].file = ReadSubFile(directory.file[i].stream);
+                        pacStream.BaseStream.Position = directory.PacFiles[i].offset;
+
+                        directory.PacFiles[i].stream = pacStream.ReadBytes(directory.PacFiles[i].size);
+
+                        directory.PacFiles[i].PACHContainer = ReadPACHContainer(directory.PacFiles[i].stream);
+
                         pacStream.BaseStream.Position = pos;
 
 
 
                         //Need to 2048 byte align these chunks
-                        iOffset += directory.file[i].size + ((2048 - (directory.file[i].size % 2048)) % 2048);
+                        iOffset += directory.PacFiles[i].size + ((2048 - (directory.PacFiles[i].size % 2048)) % 2048);
                     }
                     dirList.Add(directory);
             }
 
             return dirList;
         }
-        PacFile ReadFile()
+        PacFile ReadPacFile()
         {
             var pacfile = new PacFile();
 
@@ -161,45 +165,50 @@ namespace PACTool
             return pacfile;
         }
 
-        PACH ReadSubFile(byte[] file) 
+        PACH ReadPACHContainer(byte[] file) 
         {
-            MemoryStream pachmem = new MemoryStream(file);
-            BinaryReader pachStream = new BinaryReader(pachmem);
-            var subfile = new PACH();
 
-            subfile.id = new string(pachStream.ReadChars(4)); //Obviously PACH
-
-            if (subfile.id != "PACH")
+            using (MemoryStream pachStream = new MemoryStream(file)) 
             {
-                return subfile; //So obviously not. Thanks a lot createmode.pac....
-            }
-
-
-            subfile.nfiles = (int)pachStream.ReadUInt32();
-            subfile.file = new PACHFile[subfile.nfiles];
-            for(var i=0; i<subfile.nfiles; i++)
-            {
-                subfile.file[i] = ReadSubSubFile(pachStream);
-            }
-            for (var i = 0; i < subfile.nfiles; i++)
-            {
-                var pos = pachStream.BaseStream.Position;
-                subfile.file[i].stream = pachStream.ReadBytes(subfile.file[i].size);
-                byte[] header = new byte[4]; 
-                Buffer.BlockCopy(subfile.file[i].stream, 0, header, 0, 4);
-                var recursionCheck = System.Text.Encoding.UTF8.GetString(header);
-
-                if (recursionCheck == "PACH")
+                using (BinaryReader pachReader = new BinaryReader(pachStream)) 
                 {
-                    subfile.file[i].file = ReadSubFile(subfile.file[i].stream);
-                }
+                    var Container = new PACH();
+                    Container.id = new string(pachReader.ReadChars(4));
 
-                pachStream.BaseStream.Position = pos;
+                    if (Container.id != "PACH")
+                    {
+                        return Container; //Thanks a lot createmode.pac....
+                    }
+
+                    Container.nfiles = (int)pachReader.ReadUInt32();
+                    Container.PACHFiles = new PACHFile[Container.nfiles];
+                    for (var i = 0; i < Container.nfiles; i++)
+                    {
+                        Container.PACHFiles[i] = ReadSubSubFile(pachReader);
+                    }
+                    var pos = pachReader.BaseStream.Position; //offsets are based on this.
+                    for (var j = 0; j < Container.nfiles; j++)
+                    {
+                        //var pos = pachReader.BaseStream.Position;
+                        pachReader.BaseStream.Position = Container.PACHFiles[j].offset + pos;
+
+                        Container.PACHFiles[j].stream = pachReader.ReadBytes(Container.PACHFiles[j].size);
+
+                        byte[] header = new byte[4]; Buffer.BlockCopy(Container.PACHFiles[j].stream, 0, header, 0, 4);
+                        var recursionCheck = System.Text.Encoding.UTF8.GetString(header);
+                        if (recursionCheck == "PACH")
+                        {
+                            Container.PACHFiles[j].SubContainer = ReadPACHContainer(Container.PACHFiles[j].stream);
+                        }
+
+                        //pachReader.BaseStream.Position = pos;
+                    }
+
+                    return Container;
+                }
             }
 
-            pachStream.Close();
-            pachmem.Close();
-            return subfile;
+           
         }
         PACHFile ReadSubSubFile(BinaryReader pachStream) 
         {
