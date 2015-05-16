@@ -1,0 +1,44 @@
+/*****************************************************************************
+ * WWE2K15-Texture.hsl - Structure definitions for the WWE2K15 texture archives
+ * 2048 byte aligned = (datasize)+((2048 - (datasize % 2048)) % 2048)
+ *****************************************************************************
+ * Revision History:
+ *  2015-05-01 - Keshire - original
+ */
+
+#include "standard-types.hsl"
+#pragma byteorder(little_endian)
+#pragma maxarray(16384)
+#pragma enumsize(4)
+#pragma hide()
+
+#pragma show()
+
+struct dds {
+
+	char	dds[4];
+
+} dds ;
+
+
+struct filelist {
+	
+	char	alignedstring[16];
+	char	extension[4];
+	dword	size;
+	dword	offset;
+	dword	unknown;
+	
+} filelist ;
+
+
+
+struct header {
+
+	dword		nfiles;
+	dword		unknown; //probably byte alignment
+	dword		unknown;
+	dword		stringlength;
+	filelist	list[nfiles];
+
+};

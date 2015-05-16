@@ -1,0 +1,34 @@
+/*****************************************************************************
+ * WWE2K15-PAC.hsl - Structure definitions for the WWE2K15 .pac formats
+ * 2048 byte aligned = (datasize)+((2048 - (datasize % 2048)) % 2048)
+ *****************************************************************************
+ * Revision History:
+ *  2015-05-01 - Keshire - original
+ */
+
+#include "standard-types.hsl"
+#pragma displayname("pac structures")
+#pragma fileextensions(".pac")
+#pragma byteorder(little_endian)
+#pragma maxarray(16384)
+#pragma enumsize(4)
+#pragma hide()
+
+
+#pragma show()
+
+struct yshList
+{
+	char	string[16];
+	dword	unknown[4];
+} yshList ;
+
+
+struct yshHeader
+{
+	dword	count1;
+	dword	count2;
+	dword	count3;
+	dword	count4;
+	yshList	FileList[count1];
+};

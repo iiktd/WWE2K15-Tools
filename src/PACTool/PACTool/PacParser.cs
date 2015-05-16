@@ -9,59 +9,14 @@ using System.IO;
 namespace PACTool
 {
 
-    public class PacHeader
-    {
-        public string id;
-        public int listSize;
-        public int dataSize;
-        int version;
-    }
-    public class PacDir
-    {
-        public string id;
-        public int nfiles;
-        byte[] unknown;//6 bytes
-        public PacFile[] PacFiles; //nfiles divided by 4
-
-    }
-    public class PacFile
-    {
-        //FileIO
-        public string id; //4 bytes epac, 8 bytes epk8
-        byte[] unknown1; //3 bytes
-        public int size;
-        byte unknown2;
-
-        //Useful Stuff
-        public int offset;
-        public byte[] stream;
-        public PACH PACHContainer;
-    }
-
-    public class PACH 
-    {
-        public string id; //4 bytes
-        public int nfiles;
-        public PACHFile[] PACHFiles;
-    }
-
-    public class PACHFile 
-    {
-        public string id;
-        public int offset; //relative to start of data
-        public int size;
-
-        //byte array for stream
-        public byte[] stream;
-
-        //sigh...
-        public PACH SubContainer;
-    }
+    
 
     public class Pac
     {
         public PacHeader header;
         public PacDir[] dir;
+        public PACH container; //There are some free floating pachs.
+        public TextureArchive[] textures;
     }
     
 
@@ -75,7 +30,56 @@ namespace PACTool
             pacFile = new Pac();
             pacStream = b;
             pacFile.header = ReadHeader();
-            pacFile.dir = ReadDir().ToArray();
+
+            if (pacFile.header.id == "PACH")
+            {
+                //You opened a free floating PACH file~!
+                pacStream.BaseStream.Position = 0;
+                pacFile.container = ReadPACHContainer(pacStream.ReadBytes((int)pacStream.BaseStream.Length));
+            }
+            else if (pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC")  
+            { 
+                pacFile.dir = ReadDir().ToArray(); 
+            }
+            else 
+            { 
+                //probably a texture archive...
+                pacFile.header.id = "Texture Archive";
+                pacStream.BaseStream.Position = 0;
+                int nfiles = pacStream.ReadInt32();
+                pacStream.ReadBytes(12); //The rest of the header. Not important...
+
+                pacFile.textures = new TextureArchive[nfiles];
+                for (var i = 0; i < nfiles; i++) 
+                {
+                    var texture = new TextureArchive();
+                    char[] texturefilename = new char[0];
+
+                    //sigh, apparantly these aren't just padded strings...
+                    var temp = pacStream.ReadBytes(16);
+                    for (var j = 0; j < temp.Length; j++)
+                    {
+                        if (temp[j] == 0) 
+                        {
+                            texturefilename = new char[j];
+                            Array.Copy(temp, texturefilename, j);
+                            break;
+                        }
+                    }
+
+                    texture.alignedstring = new string(texturefilename);
+                    texture.extension = new string(pacStream.ReadChars(4));
+                    texture.size = pacStream.ReadInt32();
+                    texture.offset = pacStream.ReadInt32();
+                    pacStream.ReadBytes(4);
+
+                    var pos = pacStream.BaseStream.Position;
+                    pacStream.BaseStream.Position = texture.offset;
+                    texture.stream = pacStream.ReadBytes(texture.size);
+                    pacStream.BaseStream.Position = pos;
+                    pacFile.textures[i] = texture;
+                }
+            }
         }
 
         PacHeader ReadHeader()
@@ -89,9 +93,9 @@ namespace PACTool
                 header.dataSize = (int)pacStream.ReadUInt32();
                 pacStream.ReadUInt32(); //We don't need the version right now...
             }
-            else 
+            else
             { 
-                //PACH 
+                //other
             }
             
             return header;
