@@ -16,49 +16,54 @@ namespace PACTool
     {
 
         public string[] args = Environment.GetCommandLineArgs();
+        public string file;
+        public string filename;
+        public PacFileHandling openPacFile;
+        public FileIO efile = new FileIO();
 
         public Form1()
         {
             InitializeComponent();
-            using (BinaryReader pacStream = new BinaryReader(File.Open(args[1], FileMode.Open))) 
+            if (args.Length > 1)
             {
-                PopulateTreeView(pacStream);
+                file = args[1];
+                filename = Path.GetFileName(file);
+                using (BinaryReader pacStream = new BinaryReader(File.Open(filename, FileMode.Open)))
+                {
+                    PopulateTreeView(pacStream);
+                }
             }
-            this.Text = Path.GetFileName(args[1]);
             this.treeView1.NodeMouseClick += new TreeNodeMouseClickEventHandler(this.treeView1_NodeMouseClick);
+            treeView1.NodeMouseClick += (sender, e) => treeView1.SelectedNode = e.Node;
         }
 
         private void Form1_Load(object sender, EventArgs e) {  }
 
-
         //TreeView stuff
         private void PopulateTreeView(BinaryReader stream)
         {
+            //create the tree
+            var rootNode = new TreeNode(filename);
+
             //read the file
-            var openPacFile = new PacFileHandling(stream);
+            openPacFile = new PacFileHandling(stream);
 
-                //create the tree
-                var rootNode = new TreeNode(openPacFile.pacFile.header.id);
-                //rootNode.Tag = null;
-
-                //This populates sub directories under the root
-                if (openPacFile.pacFile.header.id == "EPK8" || openPacFile.pacFile.header.id == "EPAC") 
-                {
-                    GetDirectories(openPacFile.pacFile.dir, rootNode);
-                }
-                else if (openPacFile.pacFile.header.id == "PACH")
-                {
-                    //GetDirectories(openPacFile.pacFile.pach.PACHFiles, rootNode);
-                    rootNode.Tag = openPacFile.pacFile.container;
-                }
-                else if (openPacFile.pacFile.header.id == "Texture Archive")
-                {
-                    rootNode.Tag = openPacFile.pacFile.textures;
-                }
-                
-
-                //Add the root to the tree
-                treeView1.Nodes.Add(rootNode);
+            //What kind of file are we opening? Populate subdirecteries based on that
+            if (openPacFile.pacFile.header.id == "EPK8" || openPacFile.pacFile.header.id == "EPAC") 
+            {
+                GetDirectories(openPacFile.pacFile.dir, rootNode);
+            }
+            else if (openPacFile.pacFile.header.id == "PACH")
+            {
+                rootNode.Tag = openPacFile.pacFile.container; //Setting the root tag causes the list view to populate
+                GetPACHFileDirectories(openPacFile.pacFile.container.PACHFiles, rootNode);
+            }
+            else if (openPacFile.pacFile.header.id == "dds\0")
+            {
+                rootNode.Tag = openPacFile.pacFile.textures; //Setting the root tag causes the list view to populate
+            }
+            //Add the root to the tree
+            treeView1.Nodes.Add(rootNode);
         }
 
         private void GetDirectories(PacDir[] subDirs, TreeNode nodeToAddTo)
@@ -96,7 +101,7 @@ namespace PACTool
             TreeNode aNode;
             foreach (PACHFile subDir in subDirs) 
             {
-                if (subDir.SubContainer != null) 
+                if (subDir.SubContainer != null) //More pachs...
                 {
                     aNode = new TreeNode(subDir.id, 0, 0);
                     aNode.Tag = subDir;
@@ -104,12 +109,18 @@ namespace PACTool
                     GetPACHFileDirectories(subDir.SubContainer.PACHFiles, aNode);
                     nodeToAddTo.Nodes.Add(aNode);
                 }
+                else if (subDir.TexContainer != null) //Texture archive
+                {
+                    aNode = new TreeNode(subDir.id, 0, 0);
+                    aNode.Tag = subDir;
+                    aNode.ImageKey = "Container";
+                    nodeToAddTo.Nodes.Add(aNode);
+                }
             }  
         }
 
 
-
-        //Mouse click stuff
+        //Check the node type and populate the listview based on it.
         void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
             TreeNode newSelected = e.Node;
@@ -117,10 +128,20 @@ namespace PACTool
             ListViewItem item = null;
             ListViewItem.ListViewSubItem[] subItems;
 
+
+            //right click = extract all menu.
+            if (e.Button == MouseButtons.Right)
+            {
+                if (newSelected.Bounds.Contains(e.Location) == true) 
+                {
+                    contextMenuStrip2.Show(Cursor.Position);
+                }
+            }
+
             if (newSelected.Tag != null)
             {
 
-                if (newSelected.Text == "Texture Archive") 
+                if (newSelected.Tag.GetType().Equals(typeof(TextureArchive[]))) 
                 { 
                     //TextureArchive textures
                     TextureArchive[] textures = (TextureArchive[])newSelected.Tag;
@@ -133,16 +154,14 @@ namespace PACTool
                         item.Tag = texture;
                         subItems = new ListViewItem.ListViewSubItem[]
                         {
-                            new ListViewItem.ListViewSubItem(item, texture.extension) //Header of the contained file
+                            new ListViewItem.ListViewSubItem(item, texture.extension)
                            ,new ListViewItem.ListViewSubItem(item, texture.size.ToString())
                         };
                         item.SubItems.AddRange(subItems);
                         listView1.Items.Add(item);
                     }
                 }
-
-                //There's probably a better way of doing this...
-                if (newSelected.Tag.GetType().Equals(typeof(PacDir))) 
+                else if (newSelected.Tag.GetType().Equals(typeof(PacDir))) 
                 {
                     PacDir nodeDirInfo = (PacDir)newSelected.Tag;
 
@@ -171,13 +190,15 @@ namespace PACTool
                         foreach (var file in nodeDirInfo.PACHFiles)
                         {
                             var subFileText = new byte[4];
-                            Buffer.BlockCopy(file.stream, 0, subFileText, 0, 4);
+                            Array.Copy(file.stream, 0, subFileText, 0, 4);
+                            var name = System.Text.Encoding.UTF8.GetString(subFileText);
+
                             item = new ListViewItem(file.id, 1);
                             item.Tag = file;
                             subItems = new ListViewItem.ListViewSubItem[]
                             {
-                                 new ListViewItem.ListViewSubItem(item, System.Text.Encoding.UTF8.GetString(subFileText)) //Type
-                                ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
+                                new ListViewItem.ListViewSubItem(item, name) //Type
+                               ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
                             };
                             item.SubItems.AddRange(subItems);
                             listView1.Items.Add(item);
@@ -188,40 +209,58 @@ namespace PACTool
                 else if (newSelected.Tag.GetType().Equals(typeof(PACHFile)))
                 {
                     PACHFile nodeDirInfo = (PACHFile)newSelected.Tag;
-
-                    if (nodeDirInfo.SubContainer != null) 
+                    if (nodeDirInfo.SubContainer != null) //more pach files...
                     {
                         foreach (PACHFile subFile in nodeDirInfo.SubContainer.PACHFiles)
                         {
                             var subFileText = new byte[4];
-                            Buffer.BlockCopy(subFile.stream, 0, subFileText, 0, 4);
+                            Array.Copy(subFile.stream, 0, subFileText, 0, 4);
+                            var name = System.Text.Encoding.UTF8.GetString(subFileText);
+
                             item = new ListViewItem(subFile.id, 1);
                             item.Tag = subFile;
                             subItems = new ListViewItem.ListViewSubItem[]
                             {
-                                 new ListViewItem.ListViewSubItem(item, System.Text.Encoding.UTF8.GetString(subFileText)) //Type
+                                 new ListViewItem.ListViewSubItem(item, name) //Type
                                 ,new ListViewItem.ListViewSubItem(item, subFile.size.ToString())
                             };
                             item.SubItems.AddRange(subItems);
                             listView1.Items.Add(item);
                         }
                     }
-                    else 
+                    else if (nodeDirInfo.TexContainer != null) // Texture files
+                    {
+                        foreach (TextureArchive subFile in nodeDirInfo.TexContainer)
+                        {
+                            var file = subFile.alignedstring.Replace("\0", string.Empty).Trim() + "." + subFile.extension.Replace("\0", string.Empty).Trim();
+
+                            item = new ListViewItem(file, 2);
+                            item.Tag = subFile;
+                            subItems = new ListViewItem.ListViewSubItem[]
+                            {
+                                 new ListViewItem.ListViewSubItem(item, subFile.extension) //Header of the contained file
+                                ,new ListViewItem.ListViewSubItem(item, subFile.size.ToString())
+                            };
+                            item.SubItems.AddRange(subItems);
+                            listView1.Items.Add(item);
+                        }
+                    }
+                    else //Everything else
                     {
                         var subFileText = new byte[4];
-                        Buffer.BlockCopy(nodeDirInfo.stream, 0, subFileText, 0, 4);
+                        Array.Copy(nodeDirInfo.stream, 0, subFileText, 0, 4);
+                        var name = System.Text.Encoding.UTF8.GetString(subFileText);
+
                         item = new ListViewItem(nodeDirInfo.id, 1);
                         item.Tag = nodeDirInfo;
                         subItems = new ListViewItem.ListViewSubItem[]
                         {
-                            new ListViewItem.ListViewSubItem(item, System.Text.Encoding.UTF8.GetString(subFileText)) //Type
+                            new ListViewItem.ListViewSubItem(item, name) //Type
                            ,new ListViewItem.ListViewSubItem(item, nodeDirInfo.size.ToString())
                         };
                         item.SubItems.AddRange(subItems);
                         listView1.Items.Add(item);
                     }
-
-
                 }
                 else if (newSelected.Tag.GetType().Equals(typeof(PacFile)))
                 {
@@ -232,13 +271,15 @@ namespace PACTool
                         foreach (var file in nodeDirInfo.PACHContainer.PACHFiles)
                         {
                             var subFileText = new byte[4];
-                            Buffer.BlockCopy(file.stream, 0, subFileText, 0, 4);
+                            Array.Copy(file.stream, 0, subFileText, 0, 4);
+                            var name = System.Text.Encoding.UTF8.GetString(subFileText);
+
                             item = new ListViewItem(file.id, 1);
                             item.Tag = file;
                             subItems = new ListViewItem.ListViewSubItem[]
                             {
-                                 new ListViewItem.ListViewSubItem(item, System.Text.Encoding.UTF8.GetString(subFileText)) //Type
-                                ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
+                                new ListViewItem.ListViewSubItem(item, name) //Type
+                               ,new ListViewItem.ListViewSubItem(item, file.size.ToString())
                             };
                             item.SubItems.AddRange(subItems);
                             listView1.Items.Add(item);
@@ -259,71 +300,153 @@ namespace PACTool
                 }
             }
         }
-
         private void contextMenuStrip1_Opening(object sender, CancelEventArgs e) 
         {
             // If there are no items selected, cancel viewing the context menu
             if (listView1.SelectedItems.Count <= 0) { e.Cancel = true; }
         }
+        private void contextMenuStrip2_Opening(object sender, CancelEventArgs e)
+        {
+            // If there are no items selected, cancel viewing the context menu
+            if (treeView1.SelectedNode == null) { e.Cancel = true; }
+        }
+
+        private void openToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog1 = new OpenFileDialog();
+            openFileDialog1.Filter = "Pac Files (.pac)|*.pac|All Files (*.*)|*.*";
+            openFileDialog1.FilterIndex = 1;
+
+            // Call the ShowDialog method to show the dialog box.
+            DialogResult userClickedOK = openFileDialog1.ShowDialog();
+
+            if (userClickedOK == DialogResult.OK) // Test result.
+            {
+                file = @openFileDialog1.FileName;
+                filename = Path.GetFileName(file);
+                try
+                {
+                    using (BinaryReader pacStream = new BinaryReader(File.Open(file, FileMode.Open)))
+                    {
+                        openPacFile = null;
+                        treeView1.Nodes.Clear();
+                        listView1.Items.Clear();
+                        PopulateTreeView(pacStream);
+                    }
+                }
+                catch (IOException)
+                {
+                }
+            }
+        }
 
         private void option1ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var efile = new FileIO();
             foreach (ListViewItem item in listView1.SelectedItems)
             {
-                string filename = Path.GetDirectoryName(args[1]) + "\\" + item.SubItems[0].Text;
+                string name = Path.GetDirectoryName(file) + "\\" + item.SubItems[0].Text;
 
                 if (item.Tag.GetType().Equals(typeof(TextureArchive))) 
                 {
-                    TextureArchive file = (TextureArchive)item.Tag;
-                    efile.ExtractFile(file.stream, filename);
+                    TextureArchive texfile = (TextureArchive)item.Tag;
+                    efile.ExtractFile(texfile.stream, name);
                 }
-
-
                 if (item.Tag.GetType().Equals(typeof(PacFile)))
                 {
-                    PacFile file = (PacFile)item.Tag;
-                    efile.ExtractFile(file.stream, filename);
+                    PacFile pacfile = (PacFile)item.Tag;
+                    efile.ExtractFile(pacfile.stream, name);
                 }
                 if (item.Tag.GetType().Equals(typeof(PACHFile)))
                 {
-                    PACHFile file = (PACHFile)item.Tag;
-
-                    //We're going sloppily do this here for now
-                    byte[] header = new byte[4]; 
-                    Buffer.BlockCopy(file.stream, 0, header, 0, 4);
-                    var compressionCheck = System.Text.Encoding.UTF8.GetString(header);
-
-                    if (compressionCheck == "BPE ")
-                    {
-                        efile.DecompressBPE(file.stream, filename);
-                    }
-                    else if (compressionCheck == "ZLIB")
-                    {
-                        efile.DecompressZLIB(file.stream, filename);
-                    }
-                    else
-                    {
-                        //not compressed
-                        efile.ExtractFile(file.stream, filename);
-                    }
+                    PACHFile pachfile = (PACHFile)item.Tag;
+                    efile.ExtractFile(pachfile.stream, name);
 
                 }
                 if (item.Tag.GetType().Equals(typeof(PACH)))
                 {
-                    PACH file = (PACH)item.Tag;
+                    PACH pachcontainer = (PACH)item.Tag;
+                    efile.ExtractFile(pachcontainer.PACHFiles[0].stream, name);
+                }
+            }
+        }
 
-                    //We're going sloppily do this here for now
-                    byte[] header = new byte[4]; Buffer.BlockCopy(file.PACHFiles[0].stream, 0, header, 0, 4);
+        private void extractAllToolStripMenuItem_Click(object sender, EventArgs e)
+        {
 
-                    if (System.Text.Encoding.UTF8.GetString(header) == "BPE ") 
+            TreeNode selectedNode = treeView1.SelectedNode;
+            if (selectedNode.Tag != null) 
+            {
+                extractAll(selectedNode, selectedNode.Text); //extract everything here and then go for the children
+            }
+
+            var nNodes = selectedNode.Nodes.Count;
+            for (var i = 0; i < nNodes; i++)
+            {
+                var name = "";
+                if (selectedNode.Tag == null) 
+                {
+                    name = selectedNode.Nodes[i].Text;
+                }
+                else 
+                {
+                    name = selectedNode.Text + "\\" + selectedNode.Nodes[i].Text;
+                } 
+                var tagcheck = selectedNode.Nodes[i].Tag;
+                extractAll(selectedNode.Nodes[i], name);
+                getFilePath(selectedNode.Nodes[i], name);
+            }
+        }
+        private void getFilePath(TreeNode treeNode, string name) 
+        {
+            var nNodes = treeNode.Nodes.Count;
+            for (var i = 0; i < nNodes; i++)
+            {
+                var subname = name + "\\" + treeNode.Nodes[i].Text;
+                var tagcheck = treeNode.Nodes[i].Tag;
+                extractAll(treeNode.Nodes[i], subname);
+                getFilePath(treeNode.Nodes[i], subname);
+            }
+        }
+
+        private void extractAll(TreeNode treeNode, string path) 
+        {
+            if (treeNode.Tag.GetType().Equals(typeof(PACHFile))) 
+            {
+                PACHFile pfile = (PACHFile)treeNode.Tag;
+                if (pfile.SubContainer != null) 
+                {
+                    foreach (PACHFile sfile in pfile.SubContainer.PACHFiles) 
                     {
-                        efile.DecompressBPE(file.PACHFiles[0].stream, filename);
+                        if (sfile.SubContainer == null && sfile.TexContainer == null) 
+                        {
+                            var filepath = Path.GetDirectoryName(file) + "\\" + path + "\\" + sfile.id;
+                            efile.ExtractFile(sfile.stream, filepath);
+                        }
                     }
-                    else 
+                }
+                if (pfile.TexContainer != null)
+                {
+                    foreach (TextureArchive sfile in pfile.TexContainer)
                     {
-                        //not compressed
-                        efile.ExtractFile(file.PACHFiles[0].stream, filename);
+                        var name = sfile.alignedstring.Replace("\0", string.Empty).Trim() + "." + sfile.extension.Replace("\0", string.Empty).Trim();
+                        var filepath = Path.GetDirectoryName(file) + "\\" + path + "\\" + name;
+                        efile.ExtractFile(sfile.stream, filepath);
+                    }
+                }
+ 
+            }
+            if (treeNode.Tag.GetType().Equals(typeof(PacFile)))
+            {
+                PacFile pfile = (PacFile)treeNode.Tag;
+                if (pfile.PACHContainer != null)
+                {
+                    foreach (PACHFile sfile in pfile.PACHContainer.PACHFiles)
+                    {
+                        if (sfile.SubContainer == null && sfile.TexContainer == null)
+                        {
+                            var filepath = Path.GetDirectoryName(file) + "\\" + path + "\\" + sfile.id;
+                            efile.ExtractFile(sfile.stream, filepath);
+                        }
                     }
                 }
             }

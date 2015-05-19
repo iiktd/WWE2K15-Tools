@@ -8,61 +8,64 @@ namespace PACTool
 {
     public class PacHeader
     {
-        public string id;
-        public int listSize;
-        public int dataSize;
+        public string id {get; set;}
+        public int listSize { get; set; }
+        public int dataSize { get; set; }
         //int version;
     }
     public class PacDir
     {
-        public string id;
-        public int nfiles;
+        public string id { get; set; }
+        public int nfiles { get; set; }
         //byte[] unknown;//6 bytes
-        public PacFile[] PacFiles; //nfiles divided by 4
+
+
+        public PacFile[] PacFiles { get; set; } //nfiles divided by 4
 
     }
     public class PacFile
     {
         //FileIO
-        public string id; //4 bytes epac, 8 bytes epk8
+        public string id { get; set; } //4 bytes epac, 8 bytes epk8
         //byte unknown1; //3 bytes
-        public int size;
+        public int size { get; set; }
         //byte unknown2;
 
         //Useful Stuff
-        public int offset;
-        public byte[] stream;
-        public PACH PACHContainer;
+        public int offset { get; set; }
+        public byte[] stream { get; set; }
+        public PACH PACHContainer { get; set; }
     }
 
     public class PACH
     {
-        public string id; //4 bytes
-        public int nfiles;
-        public PACHFile[] PACHFiles;
+        public string id { get; set; } //4 bytes
+        public int nfiles { get; set; }
+        public PACHFile[] PACHFiles { get; set; }
     }
 
     public class PACHFile
     {
-        public string id;
-        public int offset; //relative to start of data
-        public int size;
+        public string id { get; set; }
+        public int offset { get; set; } //relative to start of data
+        public int size { get; set; }
 
         //byte array for stream
-        public byte[] stream;
+        public byte[] stream { get; set; }
 
         //sigh...
-        public PACH SubContainer;
+        public PACH SubContainer { get; set; }
+        public TextureArchive[] TexContainer { get; set; }
     }
 
     public class TextureArchive
     {
-        public string alignedstring;
-        public string extension;
-        public int size;
-        public int offset;
+        public string alignedstring { get; set; }
+        public string extension { get; set; }
+        public int size { get; set; }
+        public int offset { get; set; }
 
-        public byte[] stream;
+        public byte[] stream { get; set; }
     }
 
 
