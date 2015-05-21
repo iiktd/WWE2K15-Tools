@@ -1,0 +1,81 @@
+/*****************************************************************************
+ * WWE2K15-JBOY.hsl - Structure definitions for the WWE2K15 model formats
+ * 
+ *****************************************************************************
+ * Revision History:
+ *  2015-05-19 - Keshire - original
+ */
+
+#include "standard-types.hsl"
+#pragma byteorder(big_endian) //wtf?? Really?
+#pragma maxarray(16384)
+#pragma enumsize(4)
+#pragma hide()
+
+
+#pragma show()
+
+typedef struct shader {
+	char	alignedString[16];
+	word	unknown[2];
+	float	unknown;
+}shader;
+
+typedef struct shaderChunk {
+	//__this__ == beginning of the struct
+	dword	shaderOffsets[((__getDWordAt(__getAddrOf(__this__))+8) - __getAddrOf(__this__))/4];
+	shader	shaders[((__getDWordAt(__getAddrOf(__this__))+8) - __getAddrOf(__this__))/4];
+}shaderChunk;
+
+typedef struct matrix {
+	float	floats[20];
+} matrix;
+
+typedef struct chunk1 
+{
+	dword	unknown;
+	dword	unknown;
+	dword	unknown;
+	dword	unknown[20]; //Mostly seem to be 0xFFFF
+	dword	unknown;
+	dword	unknown;
+	dword	unknown;
+	dword	offset;
+	dword	offset;
+	dword	offset;
+	dword	offset;
+	dword	unknown;
+	char	alignedString[16];
+	dword	unknown;
+	dword	unknown;
+	dword	numShaders; //shader count, appends to a list of used shaders??
+	dword	offset;
+	dword	offset;
+	dword	unknown;
+	float	unknown[5];
+} chunk1;
+
+struct header
+{
+	//Are these offsets or sizes?
+	char	magic[4];
+	dword	offset;
+	dword	alignedStringLength;
+	dword	offset;
+	dword	unknown;
+	dword	unknown;
+	dword	Count1;
+	dword	unknown;
+	dword	unknown;
+	dword	unknown;
+	dword	offset;
+	dword	offset;
+	dword	offset;
+	dword	unknown;
+	dword	unknown[8];
+	chunk1	chunk1[Count1]; //supposedly bones.
+	
+	//we're going to do something funky here to get the shader chunk count for hex workshop. This is a hack.
+	//The real number for this comes from a list that is created from chunk1.
+	shaderChunk	chunk2;
+};
