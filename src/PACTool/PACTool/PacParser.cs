@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 
 using System.IO;
 
@@ -21,6 +22,9 @@ namespace PACTool
     {
         public BinaryReader pacStream;
         public Pac pacFile;
+        private byte[] extraGarbage;
+
+        private TextureParser texParser = null;
 
         public PacFileHandling(BinaryReader b)
         {
@@ -31,6 +35,7 @@ namespace PACTool
             PacDirParse dirParse = new PacDirParse(pacStream, pacFile);
             PACHParser pachParse = new PACHParser();
             TextureParser textureParse = new TextureParser();
+            texParser = textureParse;
 
             if (pacFile.header.id == "PACH")
             {
@@ -67,10 +72,29 @@ namespace PACTool
             { 
                 //other
                 //Texture??
-                pacStream.ReadBytes(28);
+                List<byte> bytes = new List<byte>();
+                bytes.AddRange(Encoding.ASCII.GetBytes(header.id));
+                bytes.AddRange(pacStream.ReadBytes(28));
+                extraGarbage = bytes.ToArray();
                 header.id = new string(pacStream.ReadChars(4));
             }
             return header;
+        }
+
+        internal void Write(BinaryWriter writer)
+        {
+            if ( pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC" || pacFile.header.id == "PACH" )
+            { }
+            else
+            {
+                //Header
+                writer.Write(extraGarbage);
+                writer.Write(Encoding.ASCII.GetBytes(pacFile.header.id));
+
+                TextureParser textureParse = new TextureParser();
+
+                texParser.WriteTextures(writer);
+            }
         }
     }
 }

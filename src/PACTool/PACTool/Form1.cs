@@ -39,6 +39,8 @@ namespace PACTool
 
         private void Form1_Load(object sender, EventArgs e) {  }
 
+        private PacFileHandling currentlyOpenFile = null;
+
         //TreeView stuff
         private void PopulateTreeView(BinaryReader stream)
         {
@@ -47,6 +49,7 @@ namespace PACTool
 
             //read the file
             openPacFile = new PacFileHandling(stream);
+            currentlyOpenFile = openPacFile;
 
             //What kind of file are we opening? Populate subdirecteries based on that
             if (openPacFile.pacFile.header.id == "EPK8" || openPacFile.pacFile.header.id == "EPAC") 
@@ -64,6 +67,19 @@ namespace PACTool
             }
             //Add the root to the tree
             treeView1.Nodes.Add(rootNode);
+        }
+
+        private void RewriteFile()
+        {
+            if ( currentlyOpenFile == null )
+            {
+                return;
+            }
+
+            FileStream stream = File.Open("output.pac", FileMode.OpenOrCreate);
+            BinaryWriter writer = new BinaryWriter( stream );
+            currentlyOpenFile.Write( writer );
+            stream.Close();
         }
 
         private void GetDirectories(PacDir[] subDirs, TreeNode nodeToAddTo)
@@ -450,6 +466,11 @@ namespace PACTool
                     }
                 }
             }
+        }
+
+        private void replaceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            RewriteFile();
         }
     }
 }
