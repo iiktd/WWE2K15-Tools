@@ -69,14 +69,14 @@ namespace PACTool
             treeView1.Nodes.Add(rootNode);
         }
 
-        private void RewriteFile()
+        private void RewriteFile( string filename )
         {
             if ( currentlyOpenFile == null )
             {
                 return;
             }
 
-            FileStream stream = File.Open("output.pac", FileMode.OpenOrCreate);
+            FileStream stream = File.Open( filename, FileMode.OpenOrCreate);
             BinaryWriter writer = new BinaryWriter( stream );
             currentlyOpenFile.Write( writer );
             stream.Close();
@@ -470,7 +470,49 @@ namespace PACTool
 
         private void replaceToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            RewriteFile();
+            foreach (ListViewItem item in listView1.SelectedItems)
+            {
+                if (item.Tag.GetType().Equals(typeof(TextureArchive)))
+                {
+                    TextureArchive texfile = (TextureArchive)item.Tag;
+
+                    OpenFileDialog openFileDialog1 = new OpenFileDialog();
+                    openFileDialog1.Filter = "Textures (*.dds)|*.dds";
+                    openFileDialog1.FilterIndex = 1;
+
+                    DialogResult userClickedOK = openFileDialog1.ShowDialog();
+
+                    if (userClickedOK == DialogResult.OK) // Test result.
+                    {
+                        file = @openFileDialog1.FileName;
+                        filename = Path.GetFileName(file);
+                        try
+                        {
+                            using (Stream fileStream = File.Open(file, FileMode.Open))
+                            {
+                                MemoryStream full_texture = new MemoryStream();
+                                fileStream.CopyTo(full_texture);
+                                texfile.stream = full_texture.ToArray();
+                            }
+                        }
+                        catch (IOException)
+                        {
+                        }
+                    }
+                }
+            }
+        }
+
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+
+            DialogResult userClickedOK = saveFileDialog1.ShowDialog();
+
+            if (userClickedOK == DialogResult.OK) // Test result.
+            {
+                RewriteFile( @saveFileDialog1.FileName );
+            }
         }
     }
 }
