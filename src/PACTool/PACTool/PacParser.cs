@@ -25,6 +25,7 @@ namespace PACTool
         private byte[] extraGarbage;
 
         private TextureParser texParser = null;
+        private PACHParser pachParser = null;
 
         public PacFileHandling(BinaryReader b)
         {
@@ -34,6 +35,7 @@ namespace PACTool
 
             PacDirParse dirParse = new PacDirParse(pacStream, pacFile);
             PACHParser pachParse = new PACHParser();
+            pachParser = pachParse;
             TextureParser textureParse = new TextureParser();
             texParser = textureParse;
 
@@ -83,18 +85,27 @@ namespace PACTool
 
         internal void Write(BinaryWriter writer)
         {
-            if ( pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC" || pacFile.header.id == "PACH" )
-            { }
-            else
+            if ( pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC" )
             {
-                //Header
-                writer.Write(extraGarbage);
-                writer.Write(Encoding.ASCII.GetBytes(pacFile.header.id));
-
-                TextureParser textureParse = new TextureParser();
-
-                texParser.WriteTextures(writer);
+                return;
             }
+            if ( pacFile.header.id == "PACH" )
+            {
+                writer.Write(Encoding.ASCII.GetBytes(pacFile.header.id));
+                writer.BaseStream.Position = 0;
+                pachParser.WritePACHContainer( writer );
+
+                return;
+            }
+
+            //Texture
+            writer.Write(extraGarbage);
+            writer.Write(Encoding.ASCII.GetBytes(pacFile.header.id));
+
+            TextureParser textureParse = new TextureParser();
+
+            texParser.WriteTextures(writer);
+
         }
     }
 }

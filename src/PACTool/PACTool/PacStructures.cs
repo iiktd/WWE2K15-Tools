@@ -50,6 +50,8 @@ namespace PACTool
         public int offset { get; set; } //relative to start of data
         public int size { get; set; }
 
+        public string compression; //used for writing
+
         //byte array for stream
         public byte[] stream { get; set; }
 

@@ -76,7 +76,7 @@ namespace PACTool
                 return;
             }
 
-            FileStream stream = File.Open( filename, FileMode.OpenOrCreate);
+            FileStream stream = File.Open( filename, FileMode.Create);
             BinaryWriter writer = new BinaryWriter( stream );
             currentlyOpenFile.Write( writer );
             stream.Close();
@@ -492,7 +492,15 @@ namespace PACTool
                             {
                                 MemoryStream full_texture = new MemoryStream();
                                 fileStream.CopyTo(full_texture);
-                                texfile.stream = full_texture.ToArray();
+
+                                if (full_texture.Length != texfile.stream.Length)
+                                {
+                                    MessageBox.Show("Cannot replace texture, sizes don't match!");
+                                }
+                                else
+                                {
+                                    full_texture.ToArray().CopyTo(texfile.stream, 0);
+                                }
                             }
                         }
                         catch (IOException)
