@@ -522,5 +522,10 @@ namespace PACTool
                 RewriteFile( @saveFileDialog1.FileName );
             }
         }
+
+        private void previewTextureToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show( "Sorry, not implemented yet." );
+        }
     }
 }

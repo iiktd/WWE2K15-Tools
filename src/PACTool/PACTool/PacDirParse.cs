@@ -11,6 +11,8 @@ namespace PACTool
         BinaryReader pacStream { get; set; }
         Pac pacFile { get; set; }
 
+        private PACHParser[] pachParsers;
+
         public PacDirParse(BinaryReader stream, Pac pac) 
         {
             pacStream = stream;
@@ -24,6 +26,8 @@ namespace PACTool
             var dirList = new List<PacDir>();
             var pachParse = new PACHParser();
             pacStream.BaseStream.Seek(2048, SeekOrigin.Begin);
+
+            List<PACHParser> parsers = new List<PACHParser>();
 
             while (pacStream.BaseStream.Position < (2048 + pacFile.header.listSize))
             {

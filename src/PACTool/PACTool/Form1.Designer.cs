@@ -41,11 +41,12 @@
             this.columnHeader3 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.option1ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.replaceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileOpenToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.replaceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.previewTextureToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -144,18 +145,26 @@
             // 
             this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.option1ToolStripMenuItem,
-            this.replaceToolStripMenuItem});
+            this.replaceToolStripMenuItem,
+            this.previewTextureToolStripMenuItem});
             this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(116, 48);
+            this.contextMenuStrip1.Size = new System.Drawing.Size(158, 92);
             this.contextMenuStrip1.Text = "Options";
             this.contextMenuStrip1.Opening += new System.ComponentModel.CancelEventHandler(this.contextMenuStrip1_Opening);
             // 
             // option1ToolStripMenuItem
             // 
             this.option1ToolStripMenuItem.Name = "option1ToolStripMenuItem";
-            this.option1ToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.option1ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.option1ToolStripMenuItem.Text = "Extract";
             this.option1ToolStripMenuItem.Click += new System.EventHandler(this.option1ToolStripMenuItem_Click);
+            // 
+            // replaceToolStripMenuItem
+            // 
+            this.replaceToolStripMenuItem.Name = "replaceToolStripMenuItem";
+            this.replaceToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.replaceToolStripMenuItem.Text = "Replace";
+            this.replaceToolStripMenuItem.Click += new System.EventHandler(this.replaceToolStripMenuItem_Click);
             // 
             // menuStrip1
             // 
@@ -183,19 +192,19 @@
             this.openToolStripMenuItem.Text = "Open";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
             // 
-            // replaceToolStripMenuItem
-            // 
-            this.replaceToolStripMenuItem.Name = "replaceToolStripMenuItem";
-            this.replaceToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.replaceToolStripMenuItem.Text = "Replace";
-            this.replaceToolStripMenuItem.Click += new System.EventHandler(this.replaceToolStripMenuItem_Click);
-            // 
             // saveToolStripMenuItem
             // 
             this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
-            this.saveToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.saveToolStripMenuItem.Size = new System.Drawing.Size(103, 22);
             this.saveToolStripMenuItem.Text = "Save";
             this.saveToolStripMenuItem.Click += new System.EventHandler(this.saveToolStripMenuItem_Click);
+            // 
+            // previewTextureToolStripMenuItem
+            // 
+            this.previewTextureToolStripMenuItem.Name = "previewTextureToolStripMenuItem";
+            this.previewTextureToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.previewTextureToolStripMenuItem.Text = "Preview Texture";
+            this.previewTextureToolStripMenuItem.Click += new System.EventHandler(this.previewTextureToolStripMenuItem_Click);
             // 
             // Form1
             // 
@@ -237,6 +246,7 @@
         private System.Windows.Forms.ToolStripMenuItem extractAllToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem replaceToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem previewTextureToolStripMenuItem;
     }
 }
 

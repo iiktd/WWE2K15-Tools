@@ -26,6 +26,8 @@ namespace PACTool
 
         private TextureParser texParser = null;
         private PACHParser pachParser = null;
+        private PacDirParse dirParser = null;
+        private uint pacVersion = 0;
 
         public PacFileHandling(BinaryReader b)
         {
@@ -34,6 +36,7 @@ namespace PACTool
             pacFile.header = ReadHeader();
 
             PacDirParse dirParse = new PacDirParse(pacStream, pacFile);
+            dirParser = dirParse;
             PACHParser pachParse = new PACHParser();
             pachParser = pachParse;
             TextureParser textureParse = new TextureParser();
@@ -67,7 +70,7 @@ namespace PACTool
             {
                 header.listSize = (int)pacStream.ReadUInt32();
                 header.dataSize = (int)pacStream.ReadUInt32();
-                pacStream.ReadUInt32(); //We don't need the version right now...
+                pacVersion = pacStream.ReadUInt32();
             }
             else if (header.id == "PACH"){}
             else

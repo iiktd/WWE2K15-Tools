@@ -12,6 +12,7 @@ namespace PACTool
 
         FileIO decompressor = new FileIO();
         TextureParser[] textureParse = null;
+        PACHParser[] pachParse = null;
         PACH Container = null;
 
         public PACH ReadPACHContainer(byte[] file)
@@ -29,7 +30,7 @@ namespace PACTool
                     }
 
                     Container.nfiles = (int)pachReader.ReadUInt32();
-
+                    pachParse = new PACHParser[Container.nfiles];
 
                     //Read the file meta data
                     Container.PACHFiles = new PACHFile[Container.nfiles];
@@ -39,6 +40,8 @@ namespace PACTool
                     }
 
                     textureParse = new TextureParser[Container.nfiles];
+
+                    bool isPach = false;
 
                     //Start of data. Meta data offsets start here
                     var pos = pachReader.BaseStream.Position; //offsets are based on this.
@@ -52,7 +55,9 @@ namespace PACTool
                         var header = System.Text.Encoding.UTF8.GetString(headerByteArray);
                         if (header == "PACH")
                         {
-                            Container.PACHFiles[j].SubContainer = ReadPACHContainer(Container.PACHFiles[j].stream);
+                            isPach = true;
+                            pachParse[j] = new PACHParser();
+                            Container.PACHFiles[j].SubContainer = pachParse[j].ReadPACHContainer(Container.PACHFiles[j].stream);
                         }
                         //Let's go ahead and decompress here.
                         if (header == "ZLIB" || header == "BPE ") 
@@ -72,7 +77,7 @@ namespace PACTool
                             else
                             {
                                 //Check for textures, the first dds extension starts at 32.
-                                if (Container.PACHFiles[j].stream.Length >= 32) 
+                                if (Container.PACHFiles[j].stream.Length >= 36) 
                                 {
                                     headerByteArray = new byte[4];
                                     Array.Copy(Container.PACHFiles[j].stream, 32, headerByteArray, 0, 4);
@@ -95,7 +100,7 @@ namespace PACTool
                         else
                         {
                             //Check for textures, the first dds extension starts at 32.
-                            if (Container.PACHFiles[j].stream.Length >= 32)
+                            if ((!isPach) && (Container.PACHFiles[j] != null) && (Container.PACHFiles[j].stream.Length >= 36))
                             {
                                 headerByteArray = new byte[4];
                                 Array.Copy(Container.PACHFiles[j].stream, 32, headerByteArray, 0, 4);
@@ -161,7 +166,7 @@ namespace PACTool
                 {
                     MemoryStream pach_stream = new MemoryStream();
                     BinaryWriter pach_writer = new BinaryWriter(pach_stream);
-                    WritePACHContainer( pach_writer, writeContainer.PACHFiles[j].SubContainer );
+                    pachParse[j].WritePACHContainer( pach_writer, writeContainer.PACHFiles[j].SubContainer );
                     pach_writer.Close();
                     writeContainer.PACHFiles[j].stream = pach_stream.ToArray();
                 }
@@ -179,11 +184,11 @@ namespace PACTool
                 writer.Write((Int32)(writeContainer.PACHFiles[j].stream.Length));
                 writer.BaseStream.Position = offPos;
 
-                writer.Write(writeContainer.PACHFiles[j].stream);
+                //writer.Write(writeContainer.PACHFiles[j].stream);
 
-                /*if (writeContainer.PACHFiles[j].compression == "ZLIB" || writeContainer.PACHFiles[j].compression == "BPE ")
+                if (writeContainer.PACHFiles[j].compression == "ZLIB" || writeContainer.PACHFiles[j].compression == "BPE ")
                 {
-                    byte[] compressedStream = decompressor.Compress(writeContainer.PACHFiles[j].stream, header);
+                    byte[] compressedStream = decompressor.Compress(writeContainer.PACHFiles[j].stream, writeContainer.PACHFiles[j].compression);
                     var tmpPos = writer.BaseStream.Position;
                     writer.BaseStream.Position = sizePosition[j];
                     writer.Write(compressedStream.Length);
@@ -191,9 +196,9 @@ namespace PACTool
                     writer.Write(compressedStream);
                 }
                 else
-                {*/
-                //    writer.Write(writeContainer.PACHFiles[j].stream);
-                //}
+                {
+                    writer.Write(writeContainer.PACHFiles[j].stream);
+                }
             }
         }
     }
