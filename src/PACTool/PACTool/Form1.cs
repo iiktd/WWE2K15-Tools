@@ -10,6 +10,8 @@ using System.Windows.Forms;
 
 using System.IO;
 
+using S16.Drawing;
+
 namespace PACTool
 {
     public partial class Form1 : Form
@@ -525,7 +527,29 @@ namespace PACTool
 
         private void previewTextureToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show( "Sorry, not implemented yet." );
+            foreach (ListViewItem item in listView1.SelectedItems)
+            {
+                if (item.Tag.GetType().Equals(typeof(TextureArchive)))
+                {
+                    using (Form previewForm = new Form())
+                    {
+                        TextureArchive texfile = (TextureArchive)item.Tag;
+                        MemoryStream previewFile = new MemoryStream(texfile.stream, 0, texfile.stream.Length);
+                        var dds = new DDSImage(previewFile);
+                        Bitmap preview = dds.BitmapImage;
+
+                        previewForm.StartPosition = FormStartPosition.CenterScreen;
+                        previewForm.Size = preview.Size;
+
+                        PictureBox previewBox = new PictureBox();
+                        previewBox.Dock = DockStyle.Fill;
+                        previewBox.Image = preview;
+
+                        previewForm.Controls.Add(previewBox);
+                        previewForm.ShowDialog();
+                    }
+                }
+            }
         }
     }
 }
