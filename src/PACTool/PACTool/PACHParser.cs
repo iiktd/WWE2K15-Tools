@@ -170,7 +170,7 @@ namespace PACTool
                     pach_writer.Close();
                     writeContainer.PACHFiles[j].stream = pach_stream.ToArray();
                 }
-                else
+                else if (textureParse[j] != null)
                 {
                     MemoryStream texturearchive_stream = new MemoryStream();
                     BinaryWriter texturearchive_writer = new BinaryWriter(texturearchive_stream);

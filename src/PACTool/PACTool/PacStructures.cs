@@ -18,7 +18,7 @@ namespace PACTool
         public string id { get; set; }
         public int nfiles { get; set; }
         //byte[] unknown;//6 bytes
-
+        public byte[] extraGarbage { get; set; }
 
         public PacFile[] PacFiles { get; set; } //nfiles divided by 4
 
@@ -28,8 +28,10 @@ namespace PACTool
         //FileIO
         public string id { get; set; } //4 bytes epac, 8 bytes epk8
         //byte unknown1; //3 bytes
+        public byte[] unknown1 { get; set; }
         public int size { get; set; }
         //byte unknown2;
+        public byte unknown2 { get; set; }
 
         //Useful Stuff
         public int offset { get; set; }

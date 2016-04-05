@@ -10,8 +10,9 @@ namespace PACTool
     {
         BinaryReader pacStream { get; set; }
         Pac pacFile { get; set; }
+        private PACHParser[][] pachParsers = null;
 
-        private PACHParser[] pachParsers;
+        byte[] headerMisc = null;
 
         public PacDirParse(BinaryReader stream, Pac pac) 
         {
@@ -24,10 +25,16 @@ namespace PACTool
         {
             var iOffset = 16384; //Start of data chunk
             var dirList = new List<PacDir>();
-            var pachParse = new PACHParser();
+
+            pacStream.BaseStream.Position = 0;
+            MemoryStream header_data = new MemoryStream();
+            pacStream.BaseStream.CopyTo(header_data, iOffset);
+            headerMisc = header_data.ToArray();
+            header_data.Close();
+
             pacStream.BaseStream.Seek(2048, SeekOrigin.Begin);
 
-            List<PACHParser> parsers = new List<PACHParser>();
+            List<PACHParser[]> parsers = new List<PACHParser[]>();
 
             while (pacStream.BaseStream.Position < (2048 + pacFile.header.listSize))
             {
@@ -41,7 +48,8 @@ namespace PACTool
                 {
                     directory.nfiles = (int)pacStream.ReadUInt16() / 3;
                 }
-                pacStream.ReadBytes(6);
+                directory.extraGarbage = pacStream.ReadBytes(6);
+                var parserElement = new PACHParser[directory.nfiles];
 
                 directory.PacFiles = new PacFile[directory.nfiles];
                 for (int i = 0; i < directory.nfiles; i++)
@@ -55,16 +63,19 @@ namespace PACTool
 
                     directory.PacFiles[i].stream = pacStream.ReadBytes(directory.PacFiles[i].size);
 
-                    directory.PacFiles[i].PACHContainer = pachParse.ReadPACHContainer(directory.PacFiles[i].stream);
+                    parserElement[i] = new PACHParser();
+                    directory.PacFiles[i].PACHContainer = parserElement[i].ReadPACHContainer(directory.PacFiles[i].stream);
 
                     pacStream.BaseStream.Position = pos;
 
                     //Need to 2048 byte align these chunks
                     iOffset += directory.PacFiles[i].size + ((2048 - (directory.PacFiles[i].size % 2048)) % 2048);
                 }
+                parsers.Add(parserElement);
                 dirList.Add(directory);
             }
 
+            pachParsers = parsers.ToArray();
             return dirList;
         }
         PacFile ReadPacFile()
@@ -84,10 +95,62 @@ namespace PACTool
                 //PACH??
             }
 
-            pacStream.ReadBytes(3);
+            pacfile.unknown1 = pacStream.ReadBytes(3);
             pacfile.size = (int)pacStream.ReadUInt32();
-            pacStream.ReadByte();
+            pacfile.unknown2 = pacStream.ReadByte();
             return pacfile;
+        }
+
+        internal void WriteDir(BinaryWriter writer, PacDir[] pacDir)
+        {
+            var iOffset = 16384; //Start of data chunk
+            writer.Write(headerMisc);
+
+            for (int i = 0; i < pacDir.Length; i++)
+            {
+                writer.Write(Encoding.ASCII.GetBytes(pacDir[i].id));
+                if (pacFile.header.id == "EPK8")
+                {
+                    writer.Write((Int16)(pacDir[i].nfiles * 4));
+                }
+                else
+                {
+                    writer.Write((Int16)(pacDir[i].nfiles * 3));
+                }
+                writer.Write(pacDir[i].extraGarbage);
+                writer.Write(pacDir[i].nfiles);
+                for (int j = 0; j < pacDir[i].nfiles; j++)
+                {
+                    MemoryStream stream = new MemoryStream();
+                    BinaryWriter streamWriter = new BinaryWriter(stream);
+                    pachParsers[i][j].WritePACHContainer(streamWriter);
+                    streamWriter.Close();
+                    pacDir[i].PacFiles[j].stream = stream.ToArray();
+                    pacDir[i].PacFiles[j].size = pacDir[i].PacFiles[j].stream.Length;
+
+                    if (pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC")
+                    {
+                        writer.Write(pacDir[i].PacFiles[j].id);
+                    }
+                    else
+                    {
+                        //PACH??
+                    }
+                    writer.Write(pacDir[i].PacFiles[j].unknown1);
+                    writer.Write((Int32)(pacDir[i].PacFiles[j].size));
+                    writer.Write(pacDir[i].PacFiles[j].unknown2);
+
+                    var next_pos = iOffset + pacDir[i].PacFiles[j].size + ((2048 - (pacDir[i].PacFiles[j].size % 2048)) % 2048);
+                    writer.BaseStream.Position = iOffset;
+                    writer.Write(pacDir[i].PacFiles[j].stream);
+                    var pos = writer.BaseStream.Position;
+                    for (int k = 0; k < (next_pos - pos); k++ )
+                    {
+                        writer.Write((byte)(0));
+                    }
+                    iOffset = next_pos;
+                }
+            }
         }
     }
 }

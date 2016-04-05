@@ -90,13 +90,15 @@ namespace PACTool
         {
             if ( pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC" )
             {
+                dirParser.WriteDir(writer, pacFile.dir);
+
                 return;
             }
             if ( pacFile.header.id == "PACH" )
             {
                 writer.Write(Encoding.ASCII.GetBytes(pacFile.header.id));
                 writer.BaseStream.Position = 0;
-                pachParser.WritePACHContainer( writer );
+                pachParser.WritePACHContainer(writer);
 
                 return;
             }
