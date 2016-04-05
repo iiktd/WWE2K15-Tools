@@ -97,7 +97,7 @@ namespace PACTool
                                 
                             }
                         }
-                        else
+                        /*else
                         {
                             //Check for textures, the first dds extension starts at 32.
                             if ((!isPach) && (Container.PACHFiles[j] != null) && (Container.PACHFiles[j].stream.Length >= 36))
@@ -117,7 +117,7 @@ namespace PACTool
                                     }
                                 }
                             }
-                        }
+                        }*/
                     }
 
                     return Container;
