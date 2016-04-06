@@ -510,6 +510,66 @@ namespace PACTool
                         }
                     }
                 }
+                else if (item.Tag.GetType().Equals(typeof(PacFile)))
+                {
+                    PacFile pacfile = (PacFile)item.Tag;
+
+                    OpenFileDialog openFileDialog1 = new OpenFileDialog();
+                    openFileDialog1.Filter = "*.*|*.*";
+                    openFileDialog1.FilterIndex = 1;
+
+                    DialogResult userClickedOK = openFileDialog1.ShowDialog();
+
+                    if (userClickedOK == DialogResult.OK)
+                    {
+                        file = @openFileDialog1.FileName;
+                        filename = Path.GetFileName(file);
+                        try
+                        {
+                            using (Stream fileStream = File.Open(file, FileMode.Open))
+                            {
+                                MemoryStream full_file = new MemoryStream();
+                                fileStream.CopyTo(full_file);
+
+                                pacfile.stream = full_file.ToArray();
+                                pacfile.size = pacfile.stream.Length;
+                            }
+                        }
+                        catch (IOException)
+                        {
+                        }
+                    } 
+                }
+                else if (item.Tag.GetType().Equals(typeof(PACHFile)))
+                {
+                    PACHFile pachfile = (PACHFile)item.Tag;
+
+                    OpenFileDialog openFileDialog1 = new OpenFileDialog();
+                    openFileDialog1.Filter = "*.*|*.*";
+                    openFileDialog1.FilterIndex = 1;
+
+                    DialogResult userClickedOK = openFileDialog1.ShowDialog();
+
+                    if (userClickedOK == DialogResult.OK)
+                    {
+                        file = @openFileDialog1.FileName;
+                        filename = Path.GetFileName(file);
+                        try
+                        {
+                            using (Stream fileStream = File.Open(file, FileMode.Open))
+                            {
+                                MemoryStream full_file = new MemoryStream();
+                                fileStream.CopyTo(full_file);
+
+                                pachfile.stream = full_file.ToArray();
+                                pachfile.size = pachfile.stream.Length;
+                            }
+                        }
+                        catch (IOException)
+                        {
+                        }
+                    }
+                }
             }
         }
 
