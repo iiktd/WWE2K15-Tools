@@ -91,6 +91,18 @@ namespace PACTool
             if ( pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC" )
             {
                 dirParser.WriteDir(writer, pacFile.dir);
+                var endPos = writer.BaseStream.Position;
+                writer.BaseStream.Position = 8; //header.dataSize
+                int newDataSize = 0;
+                foreach (var dir in pacFile.dir)
+                {
+                    foreach (var file in dir.PacFiles)
+                    {
+                        newDataSize += file.size;
+                    }
+                }
+                writer.Write((Int32)(newDataSize));
+                writer.BaseStream.Position = endPos;
 
                 return;
             }

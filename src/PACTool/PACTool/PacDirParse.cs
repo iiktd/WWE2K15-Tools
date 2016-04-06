@@ -27,10 +27,7 @@ namespace PACTool
             var dirList = new List<PacDir>();
 
             pacStream.BaseStream.Position = 0;
-            MemoryStream header_data = new MemoryStream();
-            pacStream.BaseStream.CopyTo(header_data, iOffset);
-            headerMisc = header_data.ToArray();
-            header_data.Close();
+            headerMisc = pacStream.ReadBytes(2048);
 
             pacStream.BaseStream.Seek(2048, SeekOrigin.Begin);
 
@@ -105,6 +102,7 @@ namespace PACTool
         {
             var iOffset = 16384; //Start of data chunk
             writer.Write(headerMisc);
+            writer.BaseStream.Position = 2048;
 
             for (int i = 0; i < pacDir.Length; i++)
             {
@@ -118,7 +116,7 @@ namespace PACTool
                     writer.Write((Int16)(pacDir[i].nfiles * 3));
                 }
                 writer.Write(pacDir[i].extraGarbage);
-                writer.Write(pacDir[i].nfiles);
+                var writerPos = writer.BaseStream.Position;
                 for (int j = 0; j < pacDir[i].nfiles; j++)
                 {
                     MemoryStream stream = new MemoryStream();
@@ -130,7 +128,7 @@ namespace PACTool
 
                     if (pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC")
                     {
-                        writer.Write(pacDir[i].PacFiles[j].id);
+                        writer.Write(Encoding.ASCII.GetBytes(pacDir[i].PacFiles[j].id));
                     }
                     else
                     {
@@ -139,6 +137,7 @@ namespace PACTool
                     writer.Write(pacDir[i].PacFiles[j].unknown1);
                     writer.Write((Int32)(pacDir[i].PacFiles[j].size));
                     writer.Write(pacDir[i].PacFiles[j].unknown2);
+                    var fileListPos = writer.BaseStream.Position;
 
                     var next_pos = iOffset + pacDir[i].PacFiles[j].size + ((2048 - (pacDir[i].PacFiles[j].size % 2048)) % 2048);
                     writer.BaseStream.Position = iOffset;
@@ -149,7 +148,10 @@ namespace PACTool
                         writer.Write((byte)(0));
                     }
                     iOffset = next_pos;
+
+                    writer.BaseStream.Position = fileListPos;
                 }
+                writer.BaseStream.Position = writerPos;
             }
         }
     }
