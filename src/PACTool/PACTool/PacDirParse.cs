@@ -119,12 +119,15 @@ namespace PACTool
                 var writerPos = writer.BaseStream.Position;
                 for (int j = 0; j < pacDir[i].nfiles; j++)
                 {
-                    MemoryStream stream = new MemoryStream();
-                    BinaryWriter streamWriter = new BinaryWriter(stream);
-                    pachParsers[i][j].WritePACHContainer(streamWriter);
-                    streamWriter.Close();
-                    pacDir[i].PacFiles[j].stream = stream.ToArray();
-                    pacDir[i].PacFiles[j].size = pacDir[i].PacFiles[j].stream.Length;
+                    if (pacDir[i].PacFiles[j].PACHContainer.nfiles > 0)
+                    {
+                        MemoryStream stream = new MemoryStream();
+                        BinaryWriter streamWriter = new BinaryWriter(stream);
+                        pachParsers[i][j].WritePACHContainer(streamWriter);
+                        streamWriter.Close();
+                        pacDir[i].PacFiles[j].stream = stream.ToArray();
+                        pacDir[i].PacFiles[j].size = pacDir[i].PacFiles[j].stream.Length;
+                    }
 
                     if (pacFile.header.id == "EPK8" || pacFile.header.id == "EPAC")
                     {
